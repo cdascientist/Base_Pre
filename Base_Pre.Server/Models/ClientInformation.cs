@@ -34,14 +34,6 @@ public partial class ClientInformation
     [Unicode(false)]
     public string? ClientAddress { get; set; }
 
-    [Required]
     [Column("Client_ID")]
     public int? ClientId { get; set; }
-
-    [ForeignKey("ClientId")]
-    [InverseProperty("ClientInformation")]
-    public virtual Client? Client { get; set; }
-
-    [InverseProperty("GenerateClient")]
-    public virtual ICollection<Start> Starts { get; set; } = new List<Start>();
 }

@@ -15,12 +15,4 @@ public partial class EmployeeQa
 
     [Column("Employee_QA_ID")]
     public int? EmployeeQaId { get; set; }
-
-    [ForeignKey("EmployeeQaId")]
-    [InverseProperty("EmployeeQas")]
-    public virtual Operation? EmployeeQa1 { get; set; }
-
-    [ForeignKey("EmployeeQaId")]
-    [InverseProperty("EmployeeQas")]
-    public virtual Csr? EmployeeQaNavigation { get; set; }
 }

@@ -27,7 +27,4 @@ public partial class SubProductB
 
     [Column(TypeName = "money")]
     public decimal? Price { get; set; }
-
-    [InverseProperty("SubProductBNavigation")]
-    public virtual ICollection<Product> Products { get; set; } = new List<Product>();
 }

@@ -17,7 +17,6 @@ public partial class ModelDbMuteP1Sale
     [Column("Model_DB_Init_ID")]
     public int? ModelDbInitId { get; set; }
 
-    [Required]
     [Column("DB_Mute_P1_Customer_ID")]
     public int? DbMuteP1CustomerId { get; set; }
 
@@ -25,18 +24,4 @@ public partial class ModelDbMuteP1Sale
     public DateTime? ModelDbMuteP1SalesTimeStamp { get; set; }
 
     public bool? Data { get; set; }
-
-    [ForeignKey("DbMuteP1CustomerId")]
-    [InverseProperty("ModelDbMuteP1Sale")]
-    public virtual ModelDbMuteP1? DbMuteP1Customer { get; set; }
-
-    [ForeignKey("ModelDbInitId")]
-    [InverseProperty("ModelDbMuteP1Sales")]
-    public virtual ModelDbInit? ModelDbInit { get; set; }
-
-    [InverseProperty("DbMuteP1Customer")]
-    public virtual ICollection<ModelDbMuteP1SalesSage2A> ModelDbMuteP1SalesSage2As { get; set; } = new List<ModelDbMuteP1SalesSage2A>();
-
-    [InverseProperty("DbMuteP1Customer")]
-    public virtual ICollection<ModelDbMuteP1SalesSage2B> ModelDbMuteP1SalesSage2Bs { get; set; } = new List<ModelDbMuteP1SalesSage2B>();
 }

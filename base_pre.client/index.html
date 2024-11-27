@@ -1,13 +1,881 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base Pre</title>
+    <style>
+        @import url(https://fonts.googleapis.com/css?family=Open+Sans);
+
+        div {
+            position: absolute;
+            display: block;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            overflow: visible
+        }
+
+            div:after, div:before {
+                content: "";
+                position: absolute;
+                display: block;
+                box-sizing: border-box
+            }
+
+        ::-webkit-scrollbar {
+            display: none
+        }
+
+        body {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            color: #fff;
+            font-family: "Open Sans";
+            font-size: min(1vw,16px);
+            background: #0d0d0d url(/api/placeholder/1920/1080) center/cover no-repeat fixed;
+            background-blend-mode: hard-light;
+            perspective: 500px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center
+        }
+
+        .target {
+            position: fixed;
+            width: 50%;
+            height: 50%;
+            z-index: 2
+        }
+
+            .target.top {
+                top: 0
+            }
+
+            .target.bottom {
+                bottom: 0
+            }
+
+            .target.left {
+                left: 0
+            }
+
+            .target.right {
+                right: 0
+            }
+
+        .hud {
+            position: relative;
+            width: min(80vmin,800px);
+            height: min(80vmin,800px);
+            transform-origin: center center;
+            transform-style: preserve-3d;
+            animation: hud-3d 2s 4s ease-in-out forwards;
+            pointer-events: none
+        }
+
+        .circle {
+            border-radius: 50%
+        }
+
+        .orange {
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            animation: glow-orange 1s 3s ease-in-out forwards
+        }
+
+        .notches {
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: perspective(500px) translate3d(0,0,0);
+            animation: notches-rotate 3s 1s ease-in-out,notches-3d 2s 4s ease-in-out,notches-pulse-rotate 10s 6s ease-in-out alternate infinite
+        }
+
+        .notch {
+            top: 0;
+            left: calc(50% - .25vw);
+            width: .5vw;
+            height: 50%;
+            transform-origin: bottom center;
+            animation: notches-grow 3.5s .5s ease-in-out
+        }
+
+            .notch:before {
+                width: 100%;
+                height: 10%;
+                background: #d87930
+            }
+
+        .notch1 {
+            transform: rotate(45deg)
+        }
+
+        .notch2 {
+            transform: rotate(75deg)
+        }
+
+        .notch3 {
+            transform: rotate(105deg)
+        }
+
+        .notch4 {
+            transform: rotate(135deg)
+        }
+
+        .notch5 {
+            transform: rotate(165deg)
+        }
+
+        .notch6 {
+            transform: rotate(195deg)
+        }
+
+        .notch7 {
+            transform: rotate(225deg)
+        }
+
+        .notch8 {
+            transform: rotate(255deg)
+        }
+
+        .notch9 {
+            transform: rotate(285deg)
+        }
+
+        .notch10 {
+            transform: rotate(315deg)
+        }
+
+        .notch11 {
+            transform: rotate(345deg)
+        }
+
+        .notch12 {
+            transform: rotate(375deg)
+        }
+
+        .outer {
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: .85vw solid #d87930
+        }
+
+        .outer1 {
+            top: 7%;
+            left: 7%;
+            width: 86%;
+            height: 86%;
+            border: .25vw dotted #d87930
+        }
+
+        .outer2 {
+            top: 12%;
+            left: 12%;
+            width: 76%;
+            height: 76%;
+            border: .45vw solid #d87930
+        }
+
+        .outer3 {
+            top: 20%;
+            left: 20%;
+            width: 60%;
+            height: 60%;
+            border: .25vw dotted #d87930
+        }
+
+        .inner {
+            top: 22%;
+            left: 22%;
+            width: 56%;
+            height: 56%;
+            border: .25vw solid #d87930
+        }
+
+        .inner2 {
+            top: 23%;
+            left: 23%;
+            width: 54%;
+            height: 54%;
+            border: .25vw solid #d87930
+        }
+
+        .inner3 {
+            top: 36%;
+            left: 36%;
+            width: 28%;
+            height: 28%;
+            border: .25vw dashed #d87930;
+            transform: perspective(500px) rotateX(0) rotateY(0) rotateZ(0);
+            animation: innerorange3-pulse-3d 2s 4s ease-in-out alternate infinite
+        }
+
+        .topnotches, .bottomnotches {
+            top: 25%;
+            left: 25%;
+            width: 50%;
+            height: 50%;
+            transform: rotate(90deg) perspective(500px) translate3d(0,0,0);
+            animation: notchestop-rotate 2s 2s ease-in-out,notchestop-3d 2s 4s ease-in-out forwards
+        }
+
+            .topnotches .notch {
+                left: calc(50% - .4vw);
+                width: .8vw
+            }
+
+            .bottomnotches .notch {
+                left: calc(50% - .2vw);
+                width: .4vw
+            }
+
+        .center {
+            top: 46%;
+            left: 43%;
+            width: 14%;
+            height: 8%;
+            transform: translate3d(0,0,0);
+            animation: center-pulse-3d 12s 4s ease-in-out alternate infinite
+        }
+
+        .top, .bottom {
+            width: 2vw;
+            height: .25vw;
+            background: #d87930
+        }
+
+            .top:before, .bottom:before {
+                height: 1vw;
+                width: .25vw;
+                background: #d87930
+            }
+
+            .top.left {
+                top: 0;
+                left: 0
+            }
+
+            .top.right {
+                top: 0;
+                right: 0
+            }
+
+                .top.right:before {
+                    right: 0
+                }
+
+            .bottom.left {
+                bottom: 0;
+                left: 0
+            }
+
+                .bottom.left:before {
+                    bottom: 0
+                }
+
+            .bottom.right {
+                bottom: 0;
+                right: 0
+            }
+
+                .bottom.right:before {
+                    bottom: 0;
+                    right: 0
+                }
+
+        .blue {
+            top: 32%;
+            left: 32%;
+            width: 36%;
+            height: 36%;
+            animation: glow-blue 1s 3s ease-in-out forwards
+        }
+
+            .blue .inner1 {
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                border: 1vw solid #57b3c0
+            }
+
+            .blue .inner2 {
+                top: 20%;
+                left: 20%;
+                width: 60%;
+                height: 60%;
+                border: .25vw solid #57b3c0;
+                transform: perspective(500px) rotateX(0) rotateY(0) rotateZ(0);
+                animation: innerblue2-pulse-3d 2s 4s ease-in-out alternate infinite
+            }
+
+            .blue .notches {
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                animation: notches-rotate 3s 1s ease-in-out
+            }
+
+            .blue .notch:before {
+                height: 20%;
+                background: #57b3c0
+            }
+
+        #root {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%,-50%);
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #57b3c0;
+            font-size: 1.2em;
+            text-align: center;
+            z-index: 10;
+            pointer-events: all
+        }
+
+        .callout {
+            opacity: 0;
+            width: 0;
+            height: 5vw;
+            border-bottom: .25vw solid #d87930
+        }
+
+            .callout.left {
+                bottom: 12.5vw;
+                left: -10vw;
+                animation: calloutleft-grow 3s 3s ease-in-out forwards
+            }
+
+            .callout.right {
+                top: 7.5vw;
+                right: -10vw;
+                text-align: right;
+                animation: calloutright-grow 3s 4s ease-in-out forwards
+            }
+
+        .title, .body {
+            position: relative;
+            width: 100%
+        }
+
+        .title {
+            font-size: 2em
+        }
+
+        .menu-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            width: 30px;
+            height: 25px;
+            cursor: pointer
+        }
+
+            .menu-toggle span {
+                position: absolute;
+                width: 100%;
+                height: 2px;
+                background: #57b3c0;
+                transition: all .3s ease
+            }
+
+                .menu-toggle span:nth-child(1) {
+                    top: 0
+                }
+
+                .menu-toggle span:nth-child(2) {
+                    top: 10px
+                }
+
+                .menu-toggle span:nth-child(3) {
+                    top: 20px
+                }
+
+            .menu-toggle.active span:nth-child(1) {
+                transform: rotate(45deg) translate(8px,8px)
+            }
+
+            .menu-toggle.active span:nth-child(2) {
+                opacity: 0
+            }
+
+            .menu-toggle.active span:nth-child(3) {
+                transform: rotate(-45deg) translate(7px,-7px)
+            }
+
+        .sliding-menu {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: rgba(13,20,24,.9);
+            backdrop-filter: blur(8px);
+            transition: right .3s ease;
+            z-index: 999;
+            border-left: 1px solid rgba(87,179,192,.3)
+        }
+
+            .sliding-menu.active {
+                right: 0
+            }
+
+        .menu-content {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            padding: 80px 0 40px;
+            display: flex;
+            flex-direction: column;
+            color: #57b3c0
+        }
+
+        .menu-items {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            padding: 0 40px;
+            margin-bottom: 30px
+        }
+
+        .menu-item {
+            position: relative;
+            padding: 15px 20px;
+            margin: 5px 0;
+            border: 1px solid rgba(87,179,192,.2);
+            cursor: pointer;
+            transition: all .3s ease;
+            font-size: 1.2em;
+            letter-spacing: 2px;
+            background: rgba(87,179,192,.1);
+            text-align: left;
+            border-radius: 4px
+        }
+
+            .menu-item:hover {
+                background: rgba(87,179,192,.2);
+                transform: translateX(5px)
+            }
+
+            .menu-item.active {
+                background: rgba(87,179,192,.3);
+                border-color: rgba(87,179,192,.4);
+                box-shadow: 0 0 15px rgba(87,179,192,.2)
+            }
+
+        .menu-content-section {
+            display: none;
+            position: relative;
+            height: calc(100vh - 200px);
+            padding: 0 40px;
+            overflow-y: auto
+        }
+
+            .menu-content-section.active {
+                display: block
+            }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            padding: 20px 0
+        }
+
+        .status-item {
+            background: rgba(87,179,192,.1);
+            border: 1px solid rgba(87,179,192,.2);
+            border-radius: 4px;
+            padding: 20px;
+            transition: all .3s ease
+        }
+
+            .status-item:hover {
+                background: rgba(87,179,192,.15);
+                transform: translateX(5px)
+            }
+
+            .status-item h3 {
+                color: #57b3c0;
+                margin: 0 0 10px;
+                font-size: 1.2em
+            }
+
+            .status-item p {
+                margin: 0;
+                color: #a7d3d8;
+                font-size: 1.1em
+            }
+
+        .nav-list {
+            list-style: none;
+            padding: 20px 0;
+            margin: 0
+        }
+
+        .nav-item {
+            padding: 15px;
+            margin: 10px 0;
+            border-bottom: 1px solid rgba(87,179,192,.1);
+            transition: all .3s ease;
+            color: #a7d3d8;
+            font-size: 1.1em
+        }
+
+            .nav-item:hover {
+                background: rgba(87,179,192,.1);
+                padding-left: 20px
+            }
+
+        h2 {
+            color: #57b3c0;
+            margin: 0;
+            padding: 20px 0;
+            font-size: 1.5em;
+            border-bottom: 1px solid rgba(87,179,192,.2)
+        }
+
+        @keyframes glow-orange {
+            0% {
+                filter: drop-shadow(0 0 0 transparent)
+            }
+
+            100% {
+                filter: drop-shadow(0 0 .25vw #d87930)
+            }
+        }
+
+        @keyframes glow-blue {
+            0% {
+                filter: drop-shadow(0 0 0 transparent)
+            }
+
+            100% {
+                filter: drop-shadow(0 0 .25vw #57b3c0)
+            }
+        }
+
+        @keyframes notches-grow {
+            0% {
+                width: 0
+            }
+
+            100% {
+                width: .5vw
+            }
+        }
+
+        @keyframes notches-rotate {
+            0% {
+                transform: rotate(0)
+            }
+
+            100% {
+                transform: rotate(360deg)
+            }
+        }
+
+        @keyframes notches-pulse-rotate {
+            0% {
+                transform: rotate(0) perspective(500px) translate3d(0,0,80px)
+            }
+
+            25% {
+                transform: rotate(30deg) perspective(500px) translate3d(0,0,60px)
+            }
+
+            25% {
+                transform: rotate(0) perspective(500px) translate3d(0,0,80px)
+            }
+
+            100% {
+                transform: rotate(60deg) perspective(500px) translate3d(0,0,90px)
+            }
+        }
+
+        @keyframes notchestop-rotate {
+            0% {
+                transform: rotate(90deg)
+            }
+
+            100% {
+                transform: rotate(0)
+            }
+        }
+
+        @keyframes calloutleft-grow {
+            0% {
+                left: 11vw;
+                width: 0;
+                opacity: 0
+            }
+
+            100% {
+                left: -10vw;
+                width: 21vw;
+                opacity: 1
+            }
+        }
+
+        @keyframes calloutright-grow {
+            0% {
+                right: 11vw;
+                width: 0;
+                opacity: 0
+            }
+
+            100% {
+                right: -10vw;
+                width: 21vw;
+                opacity: 1
+            }
+        }
+
+        @keyframes hud-3d {
+            0% {
+                transform: perspective(500px) rotateX(0) rotateY(0) rotateZ(0) scale(1)
+            }
+
+            100% {
+                transform: perspective(500px) rotateX(10deg) rotateY(-10deg) rotateZ(0) scale(.75)
+            }
+        }
+
+        @keyframes notches-3d {
+            0% {
+                transform: perspective(500px) translate3d(0,0,0)
+            }
+
+            100% {
+                transform: perspective(500px) translate3d(0,0,80px)
+            }
+        }
+
+        @keyframes notchestop-3d {
+            0% {
+                transform: perspective(500px) translate3d(0,0,0) rotate(0)
+            }
+
+            100% {
+                transform: perspective(500px) translate3d(0,0,140px) rotate(90deg)
+            }
+        }
+
+        @keyframes innerorange3-pulse-3d {
+            0% {
+                transform: perspective(500px) translate3d(0,0,0)
+            }
+
+            100% {
+                transform: perspective(500px) translate3d(0,0,-60px)
+            }
+        }
+
+        @keyframes innerblue2-pulse-3d {
+            0% {
+                transform: perspective(500px) translate3d(0,0,0)
+            }
+
+            50% {
+                transform: perspective(500px) translate3d(0,0,-50px)
+            }
+
+            100% {
+                transform: perspective(500px) translate3d(0,0,-200px)
+            }
+        }
+
+        @keyframes center-pulse-3d {
+            0% {
+                transform: perspective(500px) translate3d(0,0,0)
+            }
+
+            50% {
+                transform: perspective(500px) translate3d(0,0,80px)
+            }
+
+            100% {
+                transform: perspective(500px) translate3d(0,0,40px)
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="menu-toggle">
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
+
+    <div class="sliding-menu">
+        <div class="menu-content">
+            <div class="menu-items">
+                <div class="menu-item" data-target="system-status">SYSTEM STATUS</div>
+                <div class="menu-item" data-target="navigation">NAVIGATION</div>
+            </div>
+
+            <div class="menu-content-section" id="system-status">
+                <h2>System Status Overview</h2>
+                <div class="status-grid">
+
+
+                    <div class="status-item">
+                        <h3>Engine Status</h3>
+                        <p>Operating at 97% efficiency</p>
+                    </div>
+                   
+
+                    
+                </div>
+            </div>
+
+            <div class="menu-content-section" id="navigation">
+                <h2>Navigation Controls</h2>
+                <ul class="nav-list">
+                    <li class="nav-item">Current Heading: 275°</li>
+                    <li class="nav-item">Altitude: 1239 m</li>
+                    <li class="nav-item">Ground Speed: 275 km/h</li>
+                    <li class="nav-item">Coordinates: 47°38'N 122°18'W</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="target top left"></div>
+    <div class="target top right"></div>
+    <div class="target bottom left"></div>
+    <div class="target bottom right"></div>
+
+    <div class="hud">
+        <div class="orange">
+            <div class="notches">
+                <div class="notch notch1"></div>
+                <div class="notch notch2"></div>
+                <div class="notch notch3"></div>
+                <div class="notch notch4"></div>
+                <div class="notch notch5"></div>
+                <div class="notch notch6"></div>
+                <div class="notch notch7"></div>
+                <div class="notch notch8"></div>
+                <div class="notch notch9"></div>
+                <div class="notch notch10"></div>
+                <div class="notch notch11"></div>
+                <div class="notch notch12"></div>
+            </div>
+            <div class="circle outer"></div>
+            <div class="circle outer1"></div>
+            <div class="circle outer2"></div>
+            <div class="circle outer3"></div>
+            <div class="circle inner"></div>
+            <div class="circle inner2"></div>
+            <div class="circle inner3"></div>
+            <div class="topnotches">
+                <div class="notch notch1"></div>
+                <div class="notch notch2"></div>
+                <div class="notch notch3"></div>
+                <div class="notch notch4"></div>
+                <div class="notch notch5"></div>
+                <div class="notch notch6"></div>
+                <div class="notch notch7"></div>
+                <div class="notch notch8"></div>
+                <div class="notch notch9"></div>
+                <div class="notch notch10"></div>
+                <div class="notch notch11"></div>
+                <div class="notch notch12"></div>
+            </div>
+            <div class="bottomnotches">
+                <div class="notch notch1"></div>
+                <div class="notch notch2"></div>
+                <div class="notch notch3"></div>
+                <div class="notch notch4"></div>
+                <div class="notch notch5"></div>
+                <div class="notch notch6"></div>
+                <div class="notch notch7"></div>
+                <div class="notch notch8"></div>
+                <div class="notch notch9"></div>
+                <div class="notch notch10"></div>
+                <div class="notch notch11"></div>
+                <div class="notch notch12"></div>
+            </div>
+            <div class="center">
+                <div class="top left"></div>
+                <div class="top right"></div>
+                <div class="bottom left"></div>
+                <div class="bottom right"></div>
+            </div>
+        </div>
+        <div class="blue">
+            <div class="circle inner1"></div>
+            <div class="notches">
+                <div class="notch notch1"></div>
+                <div class="notch notch2"></div>
+                <div class="notch notch3"></div>
+                <div class="notch notch4"></div>
+                <div class="notch notch5"></div>
+                <div class="notch notch6"></div>
+                <div class="notch notch7"></div>
+                <div class="notch notch8"></div>
+                <div class="notch notch9"></div>
+                <div class="notch notch10"></div>
+                <div class="notch notch11"></div>
+                <div class="notch notch12"></div>
+            </div>
+            <div class="circle inner2"></div>
+            <div id="root">
+            </div>
+            <script type="module" src="/src/main.jsx"></script>
+        </div>
+        <div class="callout left">
+            <div class="title">AH-64E</div>
+            <div class="body">N606SP</div>
+        </div>
+        <div class="callout right">
+            <div class="title">1239 m</div>
+            <div class="body">275 km/h</div>
+        </div>
+    </div>
+
+    <script>
+        document.querySelector('.menu-toggle').addEventListener('click', function () {
+            this.classList.toggle('active');
+            document.querySelector('.sliding-menu').classList.toggle('active');
+        });
+
+        const menuItems = document.querySelectorAll('.menu-item');
+        const contentSections = document.querySelectorAll('.menu-content-section');
+
+        menuItems.forEach(item => {
+            item.addEventListener('click', function () {
+                menuItems.forEach(i => i.classList.remove('active'));
+                contentSections.forEach(s => s.classList.remove('active'));
+
+                this.classList.add('active');
+                const targetId = this.getAttribute('data-target');
+                document.getElementById(targetId).classList.add('active');
+            });
+        });
+
+        menuItems[0].classList.add('active');
+        contentSections[0].classList.add('active');
+    </script>
+</body>
 </html>
+

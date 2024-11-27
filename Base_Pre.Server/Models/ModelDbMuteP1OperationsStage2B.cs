@@ -23,12 +23,4 @@ public partial class ModelDbMuteP1OperationsStage2B
 
     [Column("Employee_Operations_ID")]
     public int? EmployeeOperationsId { get; set; }
-
-    [ForeignKey("DbMuteP1CustomerId")]
-    [InverseProperty("ModelDbMuteP1OperationsStage2Bs")]
-    public virtual ModelDbMuteP1Operation? DbMuteP1Customer { get; set; }
-
-    [ForeignKey("EmployeeOperationsId")]
-    [InverseProperty("ModelDbMuteP1OperationsStage2Bs")]
-    public virtual EmployeeOperation? EmployeeOperations { get; set; }
 }

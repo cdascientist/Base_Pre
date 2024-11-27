@@ -27,7 +27,4 @@ public partial class SubServiceA
 
     [Column(TypeName = "money")]
     public decimal? Price { get; set; }
-
-    [InverseProperty("SubServiceANavigation")]
-    public virtual ICollection<Service> Services { get; set; } = new List<Service>();
 }

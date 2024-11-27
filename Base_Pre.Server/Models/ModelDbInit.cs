@@ -30,29 +30,6 @@ public partial class ModelDbInit
 
     public bool? Data { get; set; }
 
-    [Required]
     [Column("Customer_ID")]
     public int? CustomerId { get; set; }
-
-    [InverseProperty("CustomerNavigation")]
-    public virtual Client? Client { get; set; }
-
-    [ForeignKey("CustomerId")]
-    [InverseProperty("ModelDbInit")]
-    public virtual ModelDbMuteP1 Customer { get; set; } = null!;
-
-    [InverseProperty("ModelDbInitNavigation")]
-    public virtual ModelDbMuteP1? ModelDbMuteP1 { get; set; }
-
-    [InverseProperty("ModelDbInit")]
-    public virtual ICollection<ModelDbMuteP1Customer> ModelDbMuteP1Customers { get; set; } = new List<ModelDbMuteP1Customer>();
-
-    [InverseProperty("ModelDbInit")]
-    public virtual ICollection<ModelDbMuteP1Operation> ModelDbMuteP1Operations { get; set; } = new List<ModelDbMuteP1Operation>();
-
-    [InverseProperty("ModelDbInit")]
-    public virtual ICollection<ModelDbMuteP1Qa> ModelDbMuteP1Qas { get; set; } = new List<ModelDbMuteP1Qa>();
-
-    [InverseProperty("ModelDbInit")]
-    public virtual ICollection<ModelDbMuteP1Sale> ModelDbMuteP1Sales { get; set; } = new List<ModelDbMuteP1Sale>();
 }

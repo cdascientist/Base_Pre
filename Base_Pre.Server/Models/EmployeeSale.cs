@@ -15,12 +15,4 @@ public partial class EmployeeSale
 
     [Column("Employee_Sales_ID")]
     public int? EmployeeSalesId { get; set; }
-
-    [ForeignKey("EmployeeSalesId")]
-    [InverseProperty("EmployeeSales")]
-    public virtual Csr? EmployeeSales { get; set; }
-
-    [ForeignKey("EmployeeSalesId")]
-    [InverseProperty("EmployeeSales")]
-    public virtual Operation? EmployeeSalesNavigation { get; set; }
 }

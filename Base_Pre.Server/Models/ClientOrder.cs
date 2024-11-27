@@ -21,18 +21,6 @@ public partial class ClientOrder
     [Column("Order_ID")]
     public int? OrderId { get; set; }
 
-    [Required]
     [Column("Customer_ID")]
     public int? CustomerId { get; set; }
-
-    [InverseProperty("Customer")]
-    public virtual Client? Client { get; set; }
-
-    [ForeignKey("ClientId")]
-    [InverseProperty("ClientOrders")]
-    public virtual Client? ClientNavigation { get; set; }
-
-    [ForeignKey("CustomerId, OrderId")]
-    [InverseProperty("ClientOrders")]
-    public virtual OperationsStage1? OperationsStage1 { get; set; }
 }

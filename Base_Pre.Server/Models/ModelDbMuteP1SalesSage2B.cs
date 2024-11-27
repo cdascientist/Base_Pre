@@ -17,8 +17,4 @@ public partial class ModelDbMuteP1SalesSage2B
     public int? DbMuteP1CustomerId { get; set; }
 
     public bool? Data { get; set; }
-
-    [ForeignKey("DbMuteP1CustomerId")]
-    [InverseProperty("ModelDbMuteP1SalesSage2Bs")]
-    public virtual ModelDbMuteP1Sale? DbMuteP1Customer { get; set; }
 }

@@ -16,15 +16,12 @@ public partial class OperationsStage4
     [Column("id")]
     public int Id { get; set; }
 
-    [Required]
     [Column("Order_ID")]
     public int? OrderId { get; set; }
 
-    [Required]
     [Column("CSR_Opartational_ID")]
     public int? CsrOpartationalId { get; set; }
 
-    [Required]
     [Column("Operational_ID")]
     public int? OperationalId { get; set; }
 
@@ -54,34 +51,4 @@ public partial class OperationsStage4
 
     [Column("SubProduct_C")]
     public int? SubProductC { get; set; }
-
-    [InverseProperty("CsrOpartational6")]
-    public virtual Csr1? Csr1 { get; set; }
-
-    [InverseProperty("CsrOpartational6")]
-    public virtual Csr2? Csr2 { get; set; }
-
-    [ForeignKey("CustomerId")]
-    [InverseProperty("OperationsStage4s")]
-    public virtual Client? Customer { get; set; }
-
-    [InverseProperty("ModelDbMuteP1Operations5")]
-    public virtual ICollection<ModelDbMuteP1> ModelDbMuteP1s { get; set; } = new List<ModelDbMuteP1>();
-
-    [InverseProperty("Operational6")]
-    public virtual Operations1? Operations1 { get; set; }
-
-    [InverseProperty("Operational6")]
-    public virtual Operations2? Operations2 { get; set; }
-
-    [InverseProperty("Order")]
-    public virtual OperationsStage3? OperationsStage3 { get; set; }
-
-    [ForeignKey("SubProductA, SubProductB, SubServiceC")]
-    [InverseProperty("OperationsStage4s")]
-    public virtual Product? Product { get; set; }
-
-    [ForeignKey("SubServiceA, SubServiceB, SubServiceC")]
-    [InverseProperty("OperationsStage4s")]
-    public virtual Service? Service { get; set; }
 }

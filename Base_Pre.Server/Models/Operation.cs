@@ -15,35 +15,15 @@ public partial class Operation
     [Column("id")]
     public int Id { get; set; }
 
-    [Required]
     [Column("Operational_ID")]
     public int? OperationalId { get; set; }
 
-    [Required]
     [Column("Employee_Sales_ID")]
     public int? EmployeeSalesId { get; set; }
 
     [Column("Employee_Operations_ID")]
     public int? EmployeeOperationsId { get; set; }
 
-    [Required]
     [Column("Employee_QA_ID")]
     public int? EmployeeQaId { get; set; }
-
-    [InverseProperty("EmployeeOperationsNavigation")]
-    public virtual EmployeeOperation? EmployeeOperation { get; set; }
-
-    [InverseProperty("EmployeeQa1")]
-    public virtual ICollection<EmployeeQa> EmployeeQas { get; set; } = new List<EmployeeQa>();
-
-    [InverseProperty("EmployeeSalesNavigation")]
-    public virtual ICollection<EmployeeSale> EmployeeSales { get; set; } = new List<EmployeeSale>();
-
-    [ForeignKey("OperationalId")]
-    [InverseProperty("Operation")]
-    public virtual Operations1 Operational { get; set; } = null!;
-
-    [ForeignKey("OperationalId")]
-    [InverseProperty("Operation")]
-    public virtual Operations2 OperationalNavigation { get; set; } = null!;
 }

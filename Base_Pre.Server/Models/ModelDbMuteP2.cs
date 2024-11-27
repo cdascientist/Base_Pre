@@ -15,8 +15,4 @@ public partial class ModelDbMuteP2
 
     [Column("Model_DB_Mute_P1_ID")]
     public int? ModelDbMuteP1Id { get; set; }
-
-    [ForeignKey("ModelDbMuteP1Id")]
-    [InverseProperty("ModelDbMuteP2s")]
-    public virtual ModelDbMuteP1? ModelDbMuteP1 { get; set; }
 }

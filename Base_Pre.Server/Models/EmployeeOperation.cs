@@ -14,24 +14,6 @@ public partial class EmployeeOperation
     [Column("id")]
     public int Id { get; set; }
 
-    [Required]
     [Column("Employee_Operations_ID")]
     public int? EmployeeOperationsId { get; set; }
-
-    [ForeignKey("EmployeeOperationsId")]
-    [InverseProperty("EmployeeOperation")]
-    public virtual Csr? EmployeeOperations { get; set; }
-
-    [ForeignKey("EmployeeOperationsId")]
-    [InverseProperty("EmployeeOperation")]
-    public virtual Operation? EmployeeOperationsNavigation { get; set; }
-
-    [InverseProperty("EmployeeOperations")]
-    public virtual ICollection<ModelDbMuteP1Operation> ModelDbMuteP1Operations { get; set; } = new List<ModelDbMuteP1Operation>();
-
-    [InverseProperty("EmployeeOperations")]
-    public virtual ICollection<ModelDbMuteP1OperationsStage2A> ModelDbMuteP1OperationsStage2As { get; set; } = new List<ModelDbMuteP1OperationsStage2A>();
-
-    [InverseProperty("EmployeeOperations")]
-    public virtual ICollection<ModelDbMuteP1OperationsStage2B> ModelDbMuteP1OperationsStage2Bs { get; set; } = new List<ModelDbMuteP1OperationsStage2B>();
 }
