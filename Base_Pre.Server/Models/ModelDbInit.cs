@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 namespace Base_Pre.Server.Models;
 
 [Table("Model_DB_Init")]
-[Index("CustomerId", Name = "unq_Model_DB_Init_Customer_ID", IsUnique = true)]
 public partial class ModelDbInit
 {
     [Key]
@@ -28,7 +27,7 @@ public partial class ModelDbInit
     [Column("Model_DB_Init_ModelData")]
     public bool? ModelDbInitModelData { get; set; }
 
-    public bool? Data { get; set; }
+    public byte[]? Data { get; set; }
 
     [Column("Customer_ID")]
     public int? CustomerId { get; set; }

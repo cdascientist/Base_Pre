@@ -16,5 +16,6 @@ public partial class ModelDbMuteP1QaStage2B
     [Column("DB_Mute_P1_Customer_ID")]
     public int? DbMuteP1CustomerId { get; set; }
 
-    public bool? Data { get; set; }
+    [Unicode(false)]
+    public string? Data { get; set; }
 }

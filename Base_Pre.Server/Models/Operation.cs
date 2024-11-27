@@ -6,9 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Base_Pre.Server.Models;
 
-[Index("EmployeeQaId", Name = "unq_Operations_Employee_QA_ID", IsUnique = true)]
-[Index("EmployeeSalesId", Name = "unq_Operations_Employee_Sales_ID", IsUnique = true)]
-[Index("OperationalId", Name = "unq_Operations_Operational_ID", IsUnique = true)]
 public partial class Operation
 {
     [Key]

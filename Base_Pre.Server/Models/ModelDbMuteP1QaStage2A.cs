@@ -16,5 +16,5 @@ public partial class ModelDbMuteP1QaStage2A
     [Column("DB_Mute_P1_Customer_ID")]
     public int? DbMuteP1CustomerId { get; set; }
 
-    public bool? Data { get; set; }
+    public byte[]? Data { get; set; }
 }

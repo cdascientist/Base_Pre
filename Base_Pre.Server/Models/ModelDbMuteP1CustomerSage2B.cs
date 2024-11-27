@@ -16,5 +16,5 @@ public partial class ModelDbMuteP1CustomerSage2B
     [Column("Model_Mute_P1_Cutstomer_ID")]
     public int? ModelMuteP1CutstomerId { get; set; }
 
-    public bool? Data { get; set; }
+    public byte[]? Data { get; set; }
 }

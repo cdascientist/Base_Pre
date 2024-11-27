@@ -7,8 +7,6 @@ using Microsoft.EntityFrameworkCore;
 namespace Base_Pre.Server.Models;
 
 [Table("Client_Order")]
-[Index("CustomerId", Name = "unq_Client_Order_Customer_ID", IsUnique = true)]
-[Index("OrderId", "CustomerId", "ClientId", Name = "unq_Client_Order_Order_ID", IsUnique = true)]
 public partial class ClientOrder
 {
     [Key]

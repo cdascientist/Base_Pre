@@ -7,9 +7,6 @@ using Microsoft.EntityFrameworkCore;
 namespace Base_Pre.Server.Models;
 
 [Table("Model_DB_Mute_P1")]
-[Index("CustomerId", Name = "unq_Model_DB_Mute_P1_Customer_ID", IsUnique = true)]
-[Index("ModelDbInitId", Name = "unq_Model_DB_Mute_P1_Model_DB_Init_ID", IsUnique = true)]
-[Index("ModelDbMuteP1CustomerId", Name = "unq_Model_DB_Mute_P1_Model_DB_Mute_P1_Customer_ID", IsUnique = true)]
 public partial class ModelDbMuteP1
 {
     [Key]
@@ -37,7 +34,7 @@ public partial class ModelDbMuteP1
     [Column("Model_DB_Mute_P1_QA_ID")]
     public int? ModelDbMuteP1QaId { get; set; }
 
-    public bool? Data { get; set; }
+    public byte[]? Data { get; set; }
 
     [Column("Customer_ID")]
     public int? CustomerId { get; set; }

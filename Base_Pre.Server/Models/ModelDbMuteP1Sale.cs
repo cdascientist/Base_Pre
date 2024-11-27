@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 namespace Base_Pre.Server.Models;
 
 [Table("Model_DB_Mute_P1_Sales")]
-[Index("DbMuteP1CustomerId", Name = "unq_Model_DB_Mute_P1_Sales_DB_Mute_P1_Customer_ID", IsUnique = true)]
 public partial class ModelDbMuteP1Sale
 {
     [Key]
@@ -23,5 +22,5 @@ public partial class ModelDbMuteP1Sale
     [Column("Model_DB_Mute_P1_Sales_TimeStamp", TypeName = "smalldatetime")]
     public DateTime? ModelDbMuteP1SalesTimeStamp { get; set; }
 
-    public bool? Data { get; set; }
+    public byte[]? Data { get; set; }
 }

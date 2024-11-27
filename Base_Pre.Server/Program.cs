@@ -95,7 +95,7 @@ namespace Base_Pre.Server
                 // Update server configuration for new port
                 c.AddServer(new OpenApiServer
                 {
-                    Url = "http://localhost:5001",
+                    Url = "http://localhost:5000",
                     Description = "Development Server"
                 });
             });

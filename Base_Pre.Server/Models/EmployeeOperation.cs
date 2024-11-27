@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 namespace Base_Pre.Server.Models;
 
 [Table("Employee_Operations")]
-[Index("EmployeeOperationsId", Name = "unq_Employee_Operations_Employee_Operations_ID", IsUnique = true)]
 public partial class EmployeeOperation
 {
     [Key]

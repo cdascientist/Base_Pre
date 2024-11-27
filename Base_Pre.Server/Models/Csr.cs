@@ -7,9 +7,6 @@ using Microsoft.EntityFrameworkCore;
 namespace Base_Pre.Server.Models;
 
 [Table("CSR")]
-[Index("CsrOpartationalId", Name = "unq_CSR_CSR_Opartational_ID", IsUnique = true)]
-[Index("EmployeeQaId", Name = "unq_CSR_Employee_QA_ID", IsUnique = true)]
-[Index("EmployeeSalesId", Name = "unq_CSR_Employee_Sales_ID", IsUnique = true)]
 public partial class Csr
 {
     [Key]

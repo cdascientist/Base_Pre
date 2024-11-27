@@ -54,10 +54,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Include="bin\Debug\net8.0\Accord.dll" />
     <None Include="bin\Debug\net8.0\Accord.dll.config" />
     <None Include="bin\Debug\net8.0\Accord.MachineLearning.dll" />

@@ -7,9 +7,6 @@ using Microsoft.EntityFrameworkCore;
 namespace Base_Pre.Server.Models;
 
 [Table("Iteration_Cycle_2")]
-[Index("CsrOpartationalId", Name = "unq_Iteration_Cycle_2_CSR_Opartational_ID", IsUnique = true)]
-[Index("IterationCycleId", Name = "unq_Iteration_Cycle_2_Iteration_Cycle_ID", IsUnique = true)]
-[Index("OperationalId", Name = "unq_Iteration_Cycle_2_Operational_ID", IsUnique = true)]
 public partial class IterationCycle2
 {
     [Key]

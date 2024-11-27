@@ -7,8 +7,6 @@ using Microsoft.EntityFrameworkCore;
 namespace Base_Pre.Server.Models;
 
 [Table("Service")]
-[Index("SubServiceA", "SubServiceB", "SubServiceC", Name = "unq_Service_SubService_A", IsUnique = true)]
-[Index("SubServiceA", "SubServiceB", Name = "unq_Service_SubService_A_0", IsUnique = true)]
 public partial class Service
 {
     [Key]

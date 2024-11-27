@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 namespace Base_Pre.Server.Models;
 
 [Table("Product")]
-[Index("SubProductA", "SubProductB", "SubProductC", Name = "unq_Product_SubProduct_A", IsUnique = true)]
 public partial class Product
 {
     [Key]
