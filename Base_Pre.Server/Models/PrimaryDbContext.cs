@@ -17,8 +17,6 @@ public partial class PrimaryDbContext : DbContext
 
     public virtual DbSet<Carrier> Carriers { get; set; }
 
-    public virtual DbSet<Client> Clients { get; set; }
-
     public virtual DbSet<ClientInformation> ClientInformations { get; set; }
 
     public virtual DbSet<ClientOrder> ClientOrders { get; set; }
@@ -116,18 +114,16 @@ public partial class PrimaryDbContext : DbContext
             entity.Property(e => e.Id).ValueGeneratedNever();
         });
 
-        modelBuilder.Entity<Client>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("pk_Client");
-
-            entity.Property(e => e.Id).ValueGeneratedNever();
-        });
-
         modelBuilder.Entity<ClientInformation>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("pk_Client_Information");
 
             entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.HasOne(d => d.Customer).WithOne(p => p.ClientInformation)
+                .HasPrincipalKey<ModelDbInit>(p => p.CustomerId)
+                .HasForeignKey<ClientInformation>(d => d.CustomerId)
+                .HasConstraintName("fk_client_information");
         });
 
         modelBuilder.Entity<ClientOrder>(entity =>

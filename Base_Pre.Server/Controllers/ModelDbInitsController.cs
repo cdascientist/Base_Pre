@@ -16,6 +16,7 @@ using System.Reflection;
 using Tensorflow.Contexts;
 using Microsoft.CodeAnalysis.Elfie.Serialization;
 using Accord.Math.Distances;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Base_Pre.Server.Controllers
 {
@@ -596,6 +597,45 @@ namespace Base_Pre.Server.Controllers
                     System.Diagnostics.Debug.WriteLine($"Customer ID: {ML_Model.CustomerId}");
                     System.Diagnostics.Debug.WriteLine($"Model Data Size: {(ML_Model.Data?.Length ?? 0)} bytes");
 
+                    ///Detect if the Model also Has Machine Learning Data 
+                    if (ML_Model.Data != null && ML_Model.Data.Length > 0)
+                    {
+
+                        /// <summary>
+                        /// MODEL FOUND Part A
+                        /// </summary>
+                        System.Diagnostics.Debug.WriteLine("Model data is present and can be used for training");
+                        /// <summary>
+                        /// NEW Data Clustering creation and training from Data Retrieved from Database 
+                        /// </summary>
+                        System.Diagnostics.Debug.WriteLine("ProcessStageOne Model in Database Phase one: Setting Model to in-memory");
+
+                        /// Add model properties to runtim in-memory object
+                        Jit_Memory_Object.AddProperty("CustomerId", ML_Model.CustomerId);
+                        System.Diagnostics.Debug.WriteLine("Added Cutomer ID to in-memory object");
+
+                        Jit_Memory_Object.AddProperty("Data", ML_Model.Data);
+                        System.Diagnostics.Debug.WriteLine("Added Data to in-memory object");
+
+
+                        /// Verify properties were added
+                        var storedId = Jit_Memory_Object.GetProperty("CustomerId");
+                        var storedData = Jit_Memory_Object.GetProperty("Data") as byte[];
+
+                        System.Diagnostics.Debug.WriteLine($"Verification - Stored Model ID: {storedId}");
+                        System.Diagnostics.Debug.WriteLine($"Verification - Stored Data Size: {storedData?.Length ?? 0} bytes");
+
+                        /// <summary>
+                        /// Implement Data Clustering and reinforcment learning based upon Operational State and condition  
+                        /// </summary>
+
+
+
+
+
+
+                    }
+
 
 
                 }
@@ -607,11 +647,10 @@ namespace Base_Pre.Server.Controllers
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"Existing ML Model found for ProductType {productType} - processing existing model data");
+                System.Diagnostics.Debug.WriteLine($"Existing ML Model found for Customer ID {ML_Model.CustomerId}");
                 model.ModelDbInitModelData = true;
                 Jit_Memory_Object.AddProperty("ExistingModelFound", true);
-                Jit_Memory_Object.AddProperty("ExistingMLModel", ML_Model);
-                System.Diagnostics.Debug.WriteLine("Existing model data stored in JIT memory");
+                
             }
         }
 

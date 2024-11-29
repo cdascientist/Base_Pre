@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Base_Pre.Server.Models;
 
 [Table("Client_Information")]
+[Index("CustomerId", Name = "unq_Client_Information_Customer_ID", IsUnique = true)]
 public partial class ClientInformation
 {
     [Key]
@@ -33,6 +34,10 @@ public partial class ClientInformation
     [Unicode(false)]
     public string? ClientAddress { get; set; }
 
-    [Column("Client_ID")]
-    public int? ClientId { get; set; }
+    [Column("Customer_ID")]
+    public int? CustomerId { get; set; }
+
+    [ForeignKey("CustomerId")]
+    [InverseProperty("ClientInformation")]
+    public virtual ModelDbInit? Customer { get; set; }
 }
