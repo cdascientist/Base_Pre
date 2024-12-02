@@ -215,11 +215,14 @@ namespace Base_Pre.Server.Controllers
             var ML_Model = await _context.ModelDbInits
                 .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.CustomerId == 2);
-                 ///TODO !!!!!!: Dyanmically Set Cutomer ID 
+            ///TODO !!!!!!: Dyanmically Set Cutomer ID 
             System.Diagnostics.Debug.WriteLine($"Model fetch completed: {(ML_Model != null ? "Found" : "Not Found")}");
 
             if (ML_Model == null)
             {
+                /// <summary>
+                /// MODEL NOT FOUND By Customer ID
+                /// </summary>
                 System.Diagnostics.Debug.WriteLine($"No existing model found for ProductType {productType}. Initializing new model creation.");
                 model.ModelDbInitModelData = false;
                 Jit_Memory_Object.AddProperty("NewModelRequired", true);
@@ -228,9 +231,7 @@ namespace Base_Pre.Server.Controllers
                 {
                     System.Diagnostics.Debug.WriteLine($"Starting subproduct data collection for ProductType {productType}");
 
-                    var allSubProducts = new List<object>();
-
-
+                    var allSubProducts = new List<dynamic>();
 
                     /// <summary>
                     /// Sample Data for new Customer for initial model 
@@ -241,6 +242,10 @@ namespace Base_Pre.Server.Controllers
                     var subproductsA = await _context.SubProductAs
                         .AsNoTracking()
                         .Where(p => p.ProductType == productType)
+                        .Select(p => new {
+                            p.ProductName,
+                            Price = (float)p.Price
+                        })
                         .ToListAsync();
                     allSubProducts.AddRange(subproductsA);
                     System.Diagnostics.Debug.WriteLine($"Found {subproductsA.Count} SubProduct A records");
@@ -249,6 +254,10 @@ namespace Base_Pre.Server.Controllers
                     var subproductsB = await _context.SubProductBs
                         .AsNoTracking()
                         .Where(p => p.ProductType == productType)
+                        .Select(p => new {
+                            p.ProductName,
+                            Price = (float)p.Price
+                        })
                         .ToListAsync();
                     allSubProducts.AddRange(subproductsB);
                     System.Diagnostics.Debug.WriteLine($"Found {subproductsB.Count} SubProduct B records");
@@ -257,10 +266,13 @@ namespace Base_Pre.Server.Controllers
                     var subproductsC = await _context.SubProductCs
                         .AsNoTracking()
                         .Where(p => p.ProductType == productType)
+                        .Select(p => new {
+                            p.ProductName,
+                            Price = (float)p.Price
+                        })
                         .ToListAsync();
                     allSubProducts.AddRange(subproductsC);
                     System.Diagnostics.Debug.WriteLine($"Found {subproductsC.Count} SubProduct C records");
-
 
                     /// <summary>
                     /// Store Sample Data in the Just in Time Compiler Memeory 
@@ -277,7 +289,7 @@ namespace Base_Pre.Server.Controllers
                     {
                         Console.WriteLine("Aqusition of sample Data Failed, no records found");
                     }
-                    else 
+                    else
                     {
                         System.Diagnostics.Debug.WriteLine($"Products Sample Data found of Type:{productType}");
                         /// <summary>
@@ -286,12 +298,13 @@ namespace Base_Pre.Server.Controllers
                         /// 
                         /// Names
                         var allSubProductsNames = allSubProducts.Select(p =>
-                            ((dynamic)p).ProductName
+                            p.ProductName
                         ).ToArray();
                         /// Prices
                         var allSubProductsPrices = allSubProducts.Select(p =>
-                            ((dynamic)p).Price
+                            p.Price
                         ).ToArray();
+
                         /// <summary>
                         /// NEW Get PRODUCTS from database to train on - 3
                         /// From that list we will show the number of record that are acquired 
@@ -300,6 +313,7 @@ namespace Base_Pre.Server.Controllers
                         /// </summary>
                         System.Diagnostics.Debug.WriteLine($"Training data initialized. Number of samples: {allSubProductsNames.Length}");
                         System.Diagnostics.Debug.WriteLine($"Price range: {allSubProductsPrices.Min()} to {allSubProductsPrices.Max()}");
+
                         /// <summary>
                         /// MODEL ARCHITECTURE MODIFICATIONS FOR COMBINED FEATURES
                         /// 
@@ -329,20 +343,19 @@ namespace Base_Pre.Server.Controllers
                         ///    - Gradient updates affect both price and name feature weights
                         ///    - Learning rate applied uniformly across all feature weights
                         /// </summary>
-                        /// 
+
                         System.Diagnostics.Debug.WriteLine("Phase One: Initializing the creation of Neural Network...");
                         System.Diagnostics.Debug.WriteLine("Initializing tensors for both prices and names");
 
-
                         Tensor priceTrainData;
                         Tensor nameTrainData;
-                        try 
+                        try
                         {
                             /// <summary>
                             /// Create separate tensors for prices and names
                             /// Names are encoded as indices and then one-hot encoded
                             /// </summary>
-                            
+
                             /// Prices
                             priceTrainData = tf.convert_to_tensor(allSubProductsPrices, dtype: TF_DataType.TF_FLOAT);
                             priceTrainData = tf.reshape(priceTrainData, new[] { -1, 1 }); // Reshape to 2D
@@ -363,7 +376,6 @@ namespace Base_Pre.Server.Controllers
                             /// 3. Each column represents one unique name
                             /// 4. Matrix contains 1.0 where name matches, 0.0 elsewhere
                             /// </summary>
-                            /// 
                             var oneHotNames = new float[nameIndices.Length, uniqueNames.Count];
                             for (int i = 0; i < nameIndices.Length; i++)
                             {
@@ -377,9 +389,7 @@ namespace Base_Pre.Server.Controllers
                             /// 2. Results in tensor of shape [num_samples, 1 + num_unique_names]
                             /// 3. Each row contains: [price, name_1_hot, name_2_hot, ..., name_n_hot]
                             /// </summary>
-                            /// 
                             var combinedTrainData = tf.concat(new[] { priceTrainData, nameTrainData }, axis: 1);
-
                             System.Diagnostics.Debug.WriteLine($"Combined tensor shape: {string.Join(", ", combinedTrainData.shape)}");
 
                             /// <summary>
@@ -388,13 +398,10 @@ namespace Base_Pre.Server.Controllers
                             /// 2. W matrix shape: [inputDim, 1] for mapping combined features to price
                             /// 3. b vector shape: [1] for single output bias
                             /// </summary>
-                            /// 
                             System.Diagnostics.Debug.WriteLine("Initializing model variables for combined features");
-                            /// Price dimension + name dimensions
-                            var inputDim = 1 + uniqueNames.Count; 
+                            var inputDim = 1 + uniqueNames.Count;
                             var W = tf.Variable(tf.random.normal(new[] { inputDim, 1 }));
                             var b = tf.Variable(tf.zeros(new[] { 1 }));
-
                             System.Diagnostics.Debug.WriteLine($"Modified W shape: {string.Join(", ", W.shape)}, b shape: {string.Join(", ", b.shape)}");
 
                             /// <summary>
@@ -408,31 +415,23 @@ namespace Base_Pre.Server.Controllers
                             System.Diagnostics.Debug.WriteLine("Starting training process with combined features");
                             for (int epoch = 0; epoch < epochs; epoch++)
                             {
-                                try
+                                using (var tape = tf.GradientTape())
                                 {
-                                    using (var tape = tf.GradientTape())
+                                    var predictions = tf.matmul(combinedTrainData, W) + b;
+                                    // Modified loss function to work with combined features
+                                    var loss = tf.reduce_mean(tf.square(predictions - priceTrainData));
+
+                                    var gradients = tape.gradient(loss, new[] { W, b });
+                                    W.assign_sub(gradients[0] * learningRate);
+                                    b.assign_sub(gradients[1] * learningRate);
+
+                                    if (epoch % 10 == 0)
                                     {
-                                        var predictions = tf.matmul(combinedTrainData, W) + b;
-                                        // Modified loss function to work with combined features
-                                        var loss = tf.reduce_mean(tf.square(predictions - priceTrainData));
-
-                                        var gradients = tape.gradient(loss, new[] { W, b });
-
-                                        W.assign_sub(gradients[0] * learningRate);
-                                        b.assign_sub(gradients[1] * learningRate);
-
-                                        if (epoch % 10 == 0)
-                                        {
-                                            System.Diagnostics.Debug.WriteLine($"Training Epoch {epoch}, Loss: {loss.numpy()}");
-                                        }
+                                        System.Diagnostics.Debug.WriteLine($"Training Epoch {epoch}, Loss: {loss.numpy()}");
                                     }
                                 }
-                                catch (Exception ex)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"Error in training loop at epoch {epoch}: {ex.Message}");
-                                    throw new Exception($"Training failed at epoch {epoch}", ex);
-                                }
                             }
+
                             /// <summary>
                             /// Part 7 
                             /// Save the Model to the in-Runtime memory     
@@ -472,6 +471,105 @@ namespace Base_Pre.Server.Controllers
                                 System.Diagnostics.Debug.WriteLine($"Verification - Data Size: {storedModelData?.Length ?? 0} bytes");
 
 
+
+
+                                /// <summary>
+                                /// TEMP- SAVE MODEL TO DB  
+                                /// 
+                                /// </summary>
+                                /// 
+                                var customerId = (int)Jit_Memory_Object.GetProperty("CustomerId");
+
+                                var modelToSave = new ModelDbInit
+                                {
+                                    // Id will be auto-generated by the database
+                                    CustomerId = customerId, // Using CustomerId from JIT memory
+                                    ModelDbInitTimeStamp = DateTime.Now,
+                                    ModelDbInitCatagoricalId = null,
+                                    ModelDbInitCatagoricalName = null, // Set to null as requested
+                                    ModelDbInitModelData = true,
+                                    Data = memoryStream.ToArray(),
+                                    ClientInformation = null
+                                };
+
+                                try
+                                {
+                                    System.Diagnostics.Debug.WriteLine("Starting to save new model to database");
+
+                                    // Check if entry already exists for this customer ID
+                                    var existingModel = await _context.ModelDbInits
+                                        .AsNoTracking()
+                                        .FirstOrDefaultAsync(m => m.CustomerId == customerId);
+
+                                    if (existingModel != null)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"Updating existing model for Customer_ID: {customerId}");
+                                        modelToSave.Id = existingModel.Id;
+                                        _context.Entry(modelToSave).State = EntityState.Modified;
+                                    }
+                                    else
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"Creating new model for Customer_ID: {customerId}");
+                                        _context.ModelDbInits.Add(modelToSave);
+                                    }
+
+                                    await _context.SaveChangesAsync();
+                                    System.Diagnostics.Debug.WriteLine($"Model saved successfully. id: {modelToSave.Id}, Customer_ID: {modelToSave.CustomerId}");
+
+                                    // Update the current model with saved data
+                                    model.Id = modelToSave.Id;
+                                    model.CustomerId = modelToSave.CustomerId;
+                                    model.ModelDbInitTimeStamp = modelToSave.ModelDbInitTimeStamp;
+                                    model.ModelDbInitCatagoricalId = modelToSave.ModelDbInitCatagoricalId;
+                                    model.ModelDbInitCatagoricalName = modelToSave.ModelDbInitCatagoricalName;
+                                    model.ModelDbInitModelData = modelToSave.ModelDbInitModelData;
+                                    model.Data = modelToSave.Data;
+
+                                    // Add metadata to JIT memory
+                                    Jit_Memory_Object.AddProperty("SavedModelId", modelToSave.Id);
+                                    Jit_Memory_Object.AddProperty("ModelSaveTime", modelToSave.ModelDbInitTimeStamp);
+                                    Jit_Memory_Object.AddProperty("NewModelCreated", existingModel == null);
+
+                                    System.Diagnostics.Debug.WriteLine("Model metadata updated in memory");
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"Error saving model to database: {ex.Message}");
+                                    throw new Exception("Failed to save model to database", ex);
+                                }
+
+                                try
+                                {
+                                    var savedModel = await _context.ModelDbInits
+                                        .AsNoTracking()
+                                        .FirstOrDefaultAsync(m => m.Id == modelToSave.Id);
+
+                                    if (savedModel != null)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"Model verification successful. Found in database with id: {savedModel.Id}");
+                                        System.Diagnostics.Debug.WriteLine($"Saved model data size: {savedModel.Data?.Length ?? 0} bytes");
+                                    }
+                                    else
+                                    {
+                                        System.Diagnostics.Debug.WriteLine("Warning: Could not verify saved model in database");
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"Error verifying saved model: {ex.Message}");
+                                }
+                                /// <summary>
+                                /// TEMP- SAVE MODEL TO DB  
+                                /// 
+                                /// </summary>
+                                ///
+
+
+
+
+
+
+
                                 /// <summary>
                                 /// Implement Reinfomrment learning on model using Accord  
                                 /// Approximate a relative Cetroid based on type of price and train on relative value base upon instance of Object Creation
@@ -479,165 +577,140 @@ namespace Base_Pre.Server.Controllers
                                 System.Diagnostics.Debug.WriteLine("Phase two: Initializing Data K Clustering Implementation");
                                 System.Diagnostics.Debug.WriteLine($"Found {allSubProducts.Count} products with Type '{productType}' for Data Clustering");
 
-                                /// Extract prices and convert to double
-                                System.Diagnostics.Debug.WriteLine("Extracting prices for clustering");
-                                var prices = allSubProductsPrices.Select(p => new double[] { (double)p.Price }).ToArray();
-
-                                /// Define clustering parameters
-                                int numClusters = 3; // Define relative clusters and differentiate median
-                                int numIterations = 100;
-
-                                System.Diagnostics.Debug.WriteLine($"Clustering parameters: clusters={numClusters}, iterations={numIterations}");
-
-                                /// Create k-means algorithm
-                                var kmeans = new Accord.MachineLearning.KMeans(numClusters)
+                                // Check if all prices are identical
+                                var distinctPrices = allSubProductsPrices.Distinct().ToList();
+                                if (distinctPrices.Count == 1)
                                 {
-                                    MaxIterations = numIterations,
-                                    Distance = new SquareEuclidean()
-                                };
-                                /// Compute the algorithm
-                                System.Diagnostics.Debug.WriteLine("Starting k-means clustering");
-                                var clusters = kmeans.Learn(prices);
+                                    System.Diagnostics.Debug.WriteLine("All prices are identical. Skipping K-means clustering.");
+                                    float singlePrice = distinctPrices[0];
 
-                                /// Get the cluster centroids
-                                var centroids = clusters.Centroids;
+                                    // Store the single price as all centroids
+                                    Jit_Memory_Object.AddProperty("Centroid_1", singlePrice);
+                                    Jit_Memory_Object.AddProperty("Centroid_2", singlePrice);
+                                    Jit_Memory_Object.AddProperty("Centroid_3", singlePrice);
 
-                                System.Diagnostics.Debug.WriteLine("K-means clustering completed");
+                                    // Store additional metrics
+                                    Jit_Memory_Object.AddProperty("Largest_Centroid_Value", singlePrice);
+                                    Jit_Memory_Object.AddProperty("Largest_Centroid_Index", 0);
+                                    Jit_Memory_Object.AddProperty("Most_Points_Cluster_Index", 0);
+                                    Jit_Memory_Object.AddProperty("Most_Points_Cluster_Count", allSubProductsPrices.Length);
+                                    Jit_Memory_Object.AddProperty("Most_Points_Cluster_Value", singlePrice);
+                                    Jit_Memory_Object.AddProperty("Most_Points_Cluster_Average", singlePrice);
 
-                                /// Get cluster assignments for each point
-                                var assignments = clusters.Decide(prices);
-
-                                /// Log final results
-                                System.Diagnostics.Debug.WriteLine("Final clustering results:");
-                                for (int i = 0; i < prices.Length; i++)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"Price: {prices[i][0]:F4}, Cluster: {assignments[i]}");
+                                    System.Diagnostics.Debug.WriteLine($"Single price value: {singlePrice:F4}");
                                 }
-
-                                System.Diagnostics.Debug.WriteLine("Final centroids:");
-                                for (int i = 0; i < numClusters; i++)
+                                else
                                 {
-                                    System.Diagnostics.Debug.WriteLine($"Centroid {i}: {centroids[i][0]:F4}");
+                                    /// Extract prices and convert to double
+                                    System.Diagnostics.Debug.WriteLine("Extracting prices for clustering");
+                                    var prices = allSubProductsPrices.Select(p => new double[] { (double)p }).ToArray();
+
+                                    /// Define clustering parameters
+                                    int numClusters = 3; // Define relative clusters and differentiate median
+                                    int numIterations = 100;
+
+                                    System.Diagnostics.Debug.WriteLine($"Clustering parameters: clusters={numClusters}, iterations={numIterations}");
+
+                                    /// Create k-means algorithm
+                                    var kmeans = new Accord.MachineLearning.KMeans(numClusters)
+                                    {
+                                        MaxIterations = numIterations,
+                                        Distance = new SquareEuclidean()
+                                    };
+                                    /// Compute the algorithm
+                                    System.Diagnostics.Debug.WriteLine("Starting k-means clustering");
+                                    var clusters = kmeans.Learn(prices);
+
+                                    /// Get the cluster centroids
+                                    var centroids = clusters.Centroids;
+
+                                    System.Diagnostics.Debug.WriteLine("K-means clustering completed");
+
+                                    /// Get cluster assignments for each point
+                                    var assignments = clusters.Decide(prices);
+
+                                    /// Log final results
+                                    System.Diagnostics.Debug.WriteLine("Final clustering results:");
+                                    for (int i = 0; i < prices.Length; i++)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"Price: {prices[i][0]:F4}, Cluster: {assignments[i]}");
+                                    }
+
+                                    System.Diagnostics.Debug.WriteLine("Final centroids:");
+                                    for (int i = 0; i < numClusters; i++)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"Centroid {i}: {centroids[i][0]:F4}");
+                                    }
+
+                                    Jit_Memory_Object.AddProperty("Centroid_1", (float)centroids[0][0]);
+                                    Jit_Memory_Object.AddProperty("Centroid_2", (float)centroids[1][0]);
+                                    Jit_Memory_Object.AddProperty("Centroid_3", (float)centroids[2][0]);
+
+                                    /// Verify the stored Centroids
+                                    var Centroid_1 = Jit_Memory_Object.GetProperty("Centroid_1");
+                                    var Centroid_2 = Jit_Memory_Object.GetProperty("Centroid_2");
+                                    var Centroid_3 = Jit_Memory_Object.GetProperty("Centroid_3");
+
+                                    System.Diagnostics.Debug.WriteLine($"Verification - Centroid_1: {Centroid_1}");
+                                    System.Diagnostics.Debug.WriteLine($"Verification - Centroid_2: {Centroid_2}");
+                                    System.Diagnostics.Debug.WriteLine($"Verification - Centroid_3: {Centroid_3}");
+
+                                    /// Find the largest centroid and its information
+                                    var centroidValues = centroids.Select((c, i) => new { Value = c[0], Index = i }).ToList();
+                                    var largestCentroid = centroidValues.OrderByDescending(c => c.Value).First();
+
+                                    /// Count points in each cluster
+                                    var clusterCounts = assignments.GroupBy(a => a).ToDictionary(g => g.Key, g => g.Count());
+
+                                    /// Find cluster with most points
+                                    var largestCluster = clusterCounts.OrderByDescending(kvp => kvp.Value).First();
+
+                                    /// Calculate average of points in the cluster with most points
+                                    var pointsInLargestCluster = prices
+                                        .Select((p, i) => new { Price = p[0], ClusterIndex = assignments[i] })
+                                        .Where(p => p.ClusterIndex == largestCluster.Key)
+                                        .Select(p => p.Price)
+                                        .ToList();
+
+                                    var largestClusterAverage = pointsInLargestCluster.Average();
+
+                                    /// Store the information
+                                    Jit_Memory_Object.AddProperty("Largest_Centroid_Value", (float)largestCentroid.Value);
+                                    Jit_Memory_Object.AddProperty("Largest_Centroid_Index", largestCentroid.Index);
+                                    Jit_Memory_Object.AddProperty("Most_Points_Cluster_Index", largestCluster.Key);
+                                    Jit_Memory_Object.AddProperty("Most_Points_Cluster_Count", largestCluster.Value);
+                                    Jit_Memory_Object.AddProperty("Most_Points_Cluster_Value", (float)centroids[largestCluster.Key][0]);
+                                    Jit_Memory_Object.AddProperty("Most_Points_Cluster_Average", (float)largestClusterAverage);
+
+                                    /// Verify the stored values
+                                    System.Diagnostics.Debug.WriteLine("\n=== Extended Clustering Analysis ===");
+                                    System.Diagnostics.Debug.WriteLine($"Largest Centroid Value: {Jit_Memory_Object.GetProperty("Largest_Centroid_Value"):F4}");
+                                    System.Diagnostics.Debug.WriteLine($"Largest Centroid Index: {Jit_Memory_Object.GetProperty("Largest_Centroid_Index")}");
+                                    System.Diagnostics.Debug.WriteLine($"Cluster with Most Points - Index: {Jit_Memory_Object.GetProperty("Most_Points_Cluster_Index")}");
+                                    System.Diagnostics.Debug.WriteLine($"Cluster with Most Points - Count: {Jit_Memory_Object.GetProperty("Most_Points_Cluster_Count")}");
+                                    System.Diagnostics.Debug.WriteLine($"Cluster with Most Points - Value: {Jit_Memory_Object.GetProperty("Most_Points_Cluster_Value"):F4}");
+                                    System.Diagnostics.Debug.WriteLine($"Cluster with Most Points - Average: {Jit_Memory_Object.GetProperty("Most_Points_Cluster_Average"):F4}");
+                                    System.Diagnostics.Debug.WriteLine("================================\n");
+
+                                    // Calculate a simple metric: average distance to assigned centroid
+                                    double totalDistance = 0;
+                                    for (int i = 0; i < prices.Length; i++)
+                                    {
+                                        double distance = Math.Abs(prices[i][0] - centroids[assignments[i]][0]);
+                                        totalDistance += distance;
+                                    }
+                                    double avgDistance = totalDistance / prices.Length;
+
+                                    System.Diagnostics.Debug.WriteLine($"Average distance to assigned centroid: {avgDistance:F4}");
                                 }
-
-                                Jit_Memory_Object.AddProperty("Centroid_1", (float)centroids[0][0]);
-                                Jit_Memory_Object.AddProperty("Centroid_2", (float)centroids[1][0]);
-                                Jit_Memory_Object.AddProperty("Centroid_3", (float)centroids[2][0]);
-
-                                /// Verify the stored Centroids
-                                var Centroid_1 = Jit_Memory_Object.GetProperty("Centroid_1");
-                                var Centroid_2 = Jit_Memory_Object.GetProperty("Centroid_2");
-                                var Centroid_3 = Jit_Memory_Object.GetProperty("Centroid_3");
-
-                                Console.WriteLine($"Verification - Centroid_1: {Centroid_1}");
-                                Console.WriteLine($"Verification - Centroid_2: {Centroid_2}");
-                                Console.WriteLine($"Verification - Centroid_3: {Centroid_3}");
-
-                                /// Find the largest centroid and its information
-                                var centroidValues = centroids.Select((c, i) => new { Value = c[0], Index = i }).ToList();
-                                var largestCentroid = centroidValues.OrderByDescending(c => c.Value).First();
-
-                                /// Count points in each cluster
-                                var clusterCounts = assignments.GroupBy(a => a).ToDictionary(g => g.Key, g => g.Count());
-
-                                /// Find cluster with most points
-                                var largestCluster = clusterCounts.OrderByDescending(kvp => kvp.Value).First();
-
-                                /// Calculate average of points in the cluster with most points
-                                var pointsInLargestCluster = prices
-                                    .Select((p, i) => new { Price = p[0], ClusterIndex = assignments[i] })
-                                    .Where(p => p.ClusterIndex == largestCluster.Key)
-                                    .Select(p => p.Price)
-                                    .ToList();
-
-                                var largestClusterAverage = pointsInLargestCluster.Average();
-
-                                /// Store the information
-                                Jit_Memory_Object.AddProperty("Largest_Centroid_Value", (float)largestCentroid.Value);
-                                Jit_Memory_Object.AddProperty("Largest_Centroid_Index", largestCentroid.Index);
-                                Jit_Memory_Object.AddProperty("Most_Points_Cluster_Index", largestCluster.Key);
-                                Jit_Memory_Object.AddProperty("Most_Points_Cluster_Count", largestCluster.Value);
-                                Jit_Memory_Object.AddProperty("Most_Points_Cluster_Value", (float)centroids[largestCluster.Key][0]);
-                                Jit_Memory_Object.AddProperty("Most_Points_Cluster_Average", (float)largestClusterAverage);
-
-                                /// Verify the stored values
-                                Console.WriteLine("\n=== Extended Clustering Analysis ===");
-                                Console.WriteLine($"Largest Centroid Value: {Jit_Memory_Object.GetProperty("Largest_Centroid_Value"):F4}");
-                                Console.WriteLine($"Largest Centroid Index: {Jit_Memory_Object.GetProperty("Largest_Centroid_Index")}");
-                                Console.WriteLine($"Cluster with Most Points - Index: {Jit_Memory_Object.GetProperty("Most_Points_Cluster_Index")}");
-                                Console.WriteLine($"Cluster with Most Points - Count: {Jit_Memory_Object.GetProperty("Most_Points_Cluster_Count")}");
-                                Console.WriteLine($"Cluster with Most Points - Value: {Jit_Memory_Object.GetProperty("Most_Points_Cluster_Value"):F4}");
-                                Console.WriteLine($"Cluster with Most Points - Average: {Jit_Memory_Object.GetProperty("Most_Points_Cluster_Average"):F4}");
-                                Console.WriteLine("================================\n");
-
-                                // Calculate a simple metric: average distance to assigned centroid
-                                double totalDistance = 0;
-                                for (int i = 0; i < prices.Length; i++)
-                                {
-                                    double distance = Math.Abs(prices[i][0] - centroids[assignments[i]][0]);
-                                    totalDistance += distance;
-                                }
-                                double avgDistance = totalDistance / prices.Length;
-
-                                System.Diagnostics.Debug.WriteLine($"Average distance to assigned centroid: {avgDistance:F4}");
-
                             }
-
                         }
                         catch (Exception ex)
                         {
                             System.Diagnostics.Debug.WriteLine($"Tensor initialization failed: {ex.Message}");
                             throw new Exception("Failed to initialize tensor from price data.", ex);
                         }
-
                     }
-
-                    ///Identification of the model
-                    System.Diagnostics.Debug.WriteLine($"Customer Model found: {ML_Model.ModelDbInitCatagoricalName}");
-                    System.Diagnostics.Debug.WriteLine($"Customer ID: {ML_Model.CustomerId}");
-                    System.Diagnostics.Debug.WriteLine($"Model Data Size: {(ML_Model.Data?.Length ?? 0)} bytes");
-
-                    ///Detect if the Model also Has Machine Learning Data 
-                    if (ML_Model.Data != null && ML_Model.Data.Length > 0)
-                    {
-
-                        /// <summary>
-                        /// MODEL FOUND Part A
-                        /// </summary>
-                        System.Diagnostics.Debug.WriteLine("Model data is present and can be used for training");
-                        /// <summary>
-                        /// NEW Data Clustering creation and training from Data Retrieved from Database 
-                        /// </summary>
-                        System.Diagnostics.Debug.WriteLine("ProcessStageOne Model in Database Phase one: Setting Model to in-memory");
-
-                        /// Add model properties to runtim in-memory object
-                        Jit_Memory_Object.AddProperty("CustomerId", ML_Model.CustomerId);
-                        System.Diagnostics.Debug.WriteLine("Added Cutomer ID to in-memory object");
-
-                        Jit_Memory_Object.AddProperty("Data", ML_Model.Data);
-                        System.Diagnostics.Debug.WriteLine("Added Data to in-memory object");
-
-
-                        /// Verify properties were added
-                        var storedId = Jit_Memory_Object.GetProperty("CustomerId");
-                        var storedData = Jit_Memory_Object.GetProperty("Data") as byte[];
-
-                        System.Diagnostics.Debug.WriteLine($"Verification - Stored Model ID: {storedId}");
-                        System.Diagnostics.Debug.WriteLine($"Verification - Stored Data Size: {storedData?.Length ?? 0} bytes");
-
-                        /// <summary>
-                        /// Implement Data Clustering and reinforcment learning based upon Operational State and condition  
-                        /// </summary>
-
-
-
-
-
-
-                    }
-
-
-
                 }
                 catch (Exception ex)
                 {
@@ -647,12 +720,243 @@ namespace Base_Pre.Server.Controllers
             }
             else
             {
+
+                /// <summary>
+                /// MODEL FOUND By Customer ID
+                /// </summary>
                 System.Diagnostics.Debug.WriteLine($"Existing ML Model found for Customer ID {ML_Model.CustomerId}");
                 model.ModelDbInitModelData = true;
                 Jit_Memory_Object.AddProperty("ExistingModelFound", true);
-                
+
+                // Store model properties in JIT memory
+                Jit_Memory_Object.AddProperty("CustomerId", ML_Model.CustomerId);
+                Jit_Memory_Object.AddProperty("ModelDbInitTimeStamp", ML_Model.ModelDbInitTimeStamp);
+                Jit_Memory_Object.AddProperty("Id", ML_Model.Id);
+                Jit_Memory_Object.AddProperty("Data", ML_Model.Data);
+
+                // Verify stored properties
+                var storedCustomerId = Jit_Memory_Object.GetProperty("CustomerId");
+                var storedTimestamp = Jit_Memory_Object.GetProperty("ModelDbInitTimeStamp");
+                var storedId = Jit_Memory_Object.GetProperty("Id");
+                var storedData = Jit_Memory_Object.GetProperty("Data");
+
+                System.Diagnostics.Debug.WriteLine($"Verification - CustomerId: {storedCustomerId}");
+                System.Diagnostics.Debug.WriteLine($"Verification - Timestamp: {storedTimestamp}");
+                System.Diagnostics.Debug.WriteLine($"Verification - Id: {storedId}");
+                System.Diagnostics.Debug.WriteLine($"Verification - Data Size: {(storedData as byte[])?.Length ?? 0} bytes");
+
+                System.Diagnostics.Debug.WriteLine($"Starting subproduct data collection for ProductType {productType}");
+                var allSubProducts = new List<dynamic>();
+
+                /// <summary>
+                /// Sample Data for new Customer for initial model 
+                /// </summary>
+                /// NEW Get PRODUCTS from database to train on Lets load all the prices results into a local variable -2
+                System.Diagnostics.Debug.WriteLine("Fetching SubProduct A data");
+                var subproductsA = await _context.SubProductAs
+                    .AsNoTracking()
+                    .Where(p => p.ProductType == productType)
+                    .Select(p => new {
+                        p.ProductName,
+                        Price = (float)p.Price
+                    })
+                    .ToListAsync();
+                allSubProducts.AddRange(subproductsA);
+                System.Diagnostics.Debug.WriteLine($"Found {subproductsA.Count} SubProduct A records");
+
+                System.Diagnostics.Debug.WriteLine("Fetching SubProduct B data");
+                var subproductsB = await _context.SubProductBs
+                    .AsNoTracking()
+                    .Where(p => p.ProductType == productType)
+                    .Select(p => new {
+                        p.ProductName,
+                        Price = (float)p.Price
+                    })
+                    .ToListAsync();
+                allSubProducts.AddRange(subproductsB);
+                System.Diagnostics.Debug.WriteLine($"Found {subproductsB.Count} SubProduct B records");
+
+                System.Diagnostics.Debug.WriteLine("Fetching SubProduct C data");
+                var subproductsC = await _context.SubProductCs
+                    .AsNoTracking()
+                    .Where(p => p.ProductType == productType)
+                    .Select(p => new {
+                        p.ProductName,
+                        Price = (float)p.Price
+                    })
+                    .ToListAsync();
+                allSubProducts.AddRange(subproductsC);
+                System.Diagnostics.Debug.WriteLine($"Found {subproductsC.Count} SubProduct C records");
+
+                /// <summary>
+                /// Store Sample Data in the Just in Time Compiler Memeory 
+                /// </summary>
+                /// 
+                // Store combined list in JIT memory
+                Jit_Memory_Object.AddProperty("AllSubProducts", allSubProducts);
+                System.Diagnostics.Debug.WriteLine($"Total subproducts found: {allSubProducts.Count}");
+                model.ModelDbInitModelData = allSubProducts.Any();
+                System.Diagnostics.Debug.WriteLine("Subproduct data collection completed");
+
+                if (allSubProducts == null)
+                {
+                    Console.WriteLine("Aqusition of sample Data Failed, no records found");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"Products Sample Data found of Type:{productType}");
+                    /// <summary>
+                    /// Catagorize Sample Data 
+                    /// </summary>
+                    /// 
+                    /// Names
+                    var allSubProductsNames = allSubProducts.Select(p =>
+                        p.ProductName
+                    ).ToArray();
+                    /// Prices
+                    var allSubProductsPrices = allSubProducts.Select(p =>
+                        p.Price
+                    ).ToArray();
+
+                    /// <summary>
+                    /// Implement Reinfomrment learning on model using Accord  
+                    /// Approximate a relative Cetroid based on type of price and train on relative value base upon instance of Object Creation
+                    /// </summary>
+                    System.Diagnostics.Debug.WriteLine("Phase two: Initializing Data K Clustering Implementation");
+                    System.Diagnostics.Debug.WriteLine($"Found {allSubProducts.Count} products with Type '{productType}' for Data Clustering");
+
+                    // Check if all prices are identical
+                    var distinctPrices = allSubProductsPrices.Distinct().ToList();
+                    if (distinctPrices.Count == 1)
+                    {
+                        System.Diagnostics.Debug.WriteLine("All prices are identical. Skipping K-means clustering.");
+                        float singlePrice = distinctPrices[0];
+
+                        // Store the single price as all centroids
+                        Jit_Memory_Object.AddProperty("Centroid_1", singlePrice);
+                        Jit_Memory_Object.AddProperty("Centroid_2", singlePrice);
+                        Jit_Memory_Object.AddProperty("Centroid_3", singlePrice);
+
+                        // Store additional metrics
+                        Jit_Memory_Object.AddProperty("Largest_Centroid_Value", singlePrice);
+                        Jit_Memory_Object.AddProperty("Largest_Centroid_Index", 0);
+                        Jit_Memory_Object.AddProperty("Most_Points_Cluster_Index", 0);
+                        Jit_Memory_Object.AddProperty("Most_Points_Cluster_Count", allSubProductsPrices.Length);
+                        Jit_Memory_Object.AddProperty("Most_Points_Cluster_Value", singlePrice);
+                        Jit_Memory_Object.AddProperty("Most_Points_Cluster_Average", singlePrice);
+
+                        System.Diagnostics.Debug.WriteLine($"Single price value: {singlePrice:F4}");
+                    }
+                    else
+                    {
+                        /// Extract prices and convert to double
+                        System.Diagnostics.Debug.WriteLine("Extracting prices for clustering");
+                        var prices = allSubProductsPrices.Select(p => new double[] { (double)p }).ToArray();
+
+                        /// Define clustering parameters
+                        int numClusters = 3; // Define relative clusters and differentiate median
+                        int numIterations = 100;
+
+                        System.Diagnostics.Debug.WriteLine($"Clustering parameters: clusters={numClusters}, iterations={numIterations}");
+
+                        /// Create k-means algorithm
+                        var kmeans = new Accord.MachineLearning.KMeans(numClusters)
+                        {
+                            MaxIterations = numIterations,
+                            Distance = new SquareEuclidean()
+                        };
+                        /// Compute the algorithm
+                        System.Diagnostics.Debug.WriteLine("Starting k-means clustering");
+                        var clusters = kmeans.Learn(prices);
+
+                        /// Get the cluster centroids
+                        var centroids = clusters.Centroids;
+
+                        System.Diagnostics.Debug.WriteLine("K-means clustering completed");
+
+                        /// Get cluster assignments for each point
+                        var assignments = clusters.Decide(prices);
+
+                        /// Log final results
+                        System.Diagnostics.Debug.WriteLine("Final clustering results:");
+                        for (int i = 0; i < prices.Length; i++)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Price: {prices[i][0]:F4}, Cluster: {assignments[i]}");
+                        }
+
+                        System.Diagnostics.Debug.WriteLine("Final centroids:");
+                        for (int i = 0; i < numClusters; i++)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Centroid {i}: {centroids[i][0]:F4}");
+                        }
+
+                        Jit_Memory_Object.AddProperty("Centroid_1", (float)centroids[0][0]);
+                        Jit_Memory_Object.AddProperty("Centroid_2", (float)centroids[1][0]);
+                        Jit_Memory_Object.AddProperty("Centroid_3", (float)centroids[2][0]);
+
+                        /// Verify the stored Centroids
+                        var Centroid_1 = Jit_Memory_Object.GetProperty("Centroid_1");
+                        var Centroid_2 = Jit_Memory_Object.GetProperty("Centroid_2");
+                        var Centroid_3 = Jit_Memory_Object.GetProperty("Centroid_3");
+
+                        System.Diagnostics.Debug.WriteLine($"Verification - Centroid_1: {Centroid_1}");
+                        System.Diagnostics.Debug.WriteLine($"Verification - Centroid_2: {Centroid_2}");
+                        System.Diagnostics.Debug.WriteLine($"Verification - Centroid_3: {Centroid_3}");
+
+                        /// Find the largest centroid and its information
+                        var centroidValues = centroids.Select((c, i) => new { Value = c[0], Index = i }).ToList();
+                        var largestCentroid = centroidValues.OrderByDescending(c => c.Value).First();
+
+                        /// Count points in each cluster
+                        var clusterCounts = assignments.GroupBy(a => a).ToDictionary(g => g.Key, g => g.Count());
+
+                        /// Find cluster with most points
+                        var largestCluster = clusterCounts.OrderByDescending(kvp => kvp.Value).First();
+
+                        /// Calculate average of points in the cluster with most points
+                        var pointsInLargestCluster = prices
+                            .Select((p, i) => new { Price = p[0], ClusterIndex = assignments[i] })
+                            .Where(p => p.ClusterIndex == largestCluster.Key)
+                            .Select(p => p.Price)
+                            .ToList();
+
+                        var largestClusterAverage = pointsInLargestCluster.Average();
+
+                        /// Store the information
+                        Jit_Memory_Object.AddProperty("Largest_Centroid_Value", (float)largestCentroid.Value);
+                        Jit_Memory_Object.AddProperty("Largest_Centroid_Index", largestCentroid.Index);
+                        Jit_Memory_Object.AddProperty("Most_Points_Cluster_Index", largestCluster.Key);
+                        Jit_Memory_Object.AddProperty("Most_Points_Cluster_Count", largestCluster.Value);
+                        Jit_Memory_Object.AddProperty("Most_Points_Cluster_Value", (float)centroids[largestCluster.Key][0]);
+                        Jit_Memory_Object.AddProperty("Most_Points_Cluster_Average", (float)largestClusterAverage);
+
+                        /// Verify the stored values
+                        System.Diagnostics.Debug.WriteLine("\n=== Extended Clustering Analysis ===");
+                        System.Diagnostics.Debug.WriteLine($"Largest Centroid Value: {Jit_Memory_Object.GetProperty("Largest_Centroid_Value"):F4}");
+                        System.Diagnostics.Debug.WriteLine($"Largest Centroid Index: {Jit_Memory_Object.GetProperty("Largest_Centroid_Index")}");
+                        System.Diagnostics.Debug.WriteLine($"Cluster with Most Points - Index: {Jit_Memory_Object.GetProperty("Most_Points_Cluster_Index")}");
+                        System.Diagnostics.Debug.WriteLine($"Cluster with Most Points - Count: {Jit_Memory_Object.GetProperty("Most_Points_Cluster_Count")}");
+                        System.Diagnostics.Debug.WriteLine($"Cluster with Most Points - Value: {Jit_Memory_Object.GetProperty("Most_Points_Cluster_Value"):F4}");
+                        System.Diagnostics.Debug.WriteLine($"Cluster with Most Points - Average: {Jit_Memory_Object.GetProperty("Most_Points_Cluster_Average"):F4}");
+                        System.Diagnostics.Debug.WriteLine("================================\n");
+
+                        // Calculate a simple metric: average distance to assigned centroid
+                        double totalDistance = 0;
+                        for (int i = 0; i < prices.Length; i++)
+                        {
+                            double distance = Math.Abs(prices[i][0] - centroids[assignments[i]][0]);
+                            totalDistance += distance;
+                        }
+                        double avgDistance = totalDistance / prices.Length;
+
+                        System.Diagnostics.Debug.WriteLine($"Average distance to assigned centroid: {avgDistance:F4}");
+                    }
+                }
+
+
             }
         }
+
 
 
 
@@ -669,6 +973,39 @@ namespace Base_Pre.Server.Controllers
             System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Setting CustomerId to {id}");
             model.CustomerId = id;
 
+            // Get and verify stored model information
+            var storedId = Jit_Memory_Object.GetProperty("Id");
+            var storedCustomerId = Jit_Memory_Object.GetProperty("CustomerId");
+            var storedData = Jit_Memory_Object.GetProperty("Data");
+
+            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved stored Id: {storedId}");
+            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved stored CustomerId: {storedCustomerId}");
+            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved stored Data size: {(storedData as byte[])?.Length ?? 0} bytes");
+
+            // Retrieve centroids from JIT memory
+            var centroid1 = Jit_Memory_Object.GetProperty("Centroid_1");
+            var centroid2 = Jit_Memory_Object.GetProperty("Centroid_2");
+            var centroid3 = Jit_Memory_Object.GetProperty("Centroid_3");
+
+            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved Centroid_1: {centroid1}");
+            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved Centroid_2: {centroid2}");
+            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved Centroid_3: {centroid3}");
+
+            // Retrieve and display AllSubProducts
+            var allSubProducts = Jit_Memory_Object.GetProperty("AllSubProducts") as List<dynamic>;
+            if (allSubProducts != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved AllSubProducts - Count: {allSubProducts.Count}");
+                foreach (var product in allSubProducts)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Product - Name: {product.ProductName}, Price: {product.Price}");
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("ProcessFactoryTwo: No AllSubProducts found in JIT memory");
+            }
+
             System.Diagnostics.Debug.WriteLine("ProcessFactoryTwo: Adding Stage2Complete property");
             Jit_Memory_Object.AddProperty("Stage2Complete", true);
         }
@@ -681,9 +1018,56 @@ namespace Base_Pre.Server.Controllers
             System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Setting CustomerId to {id}");
             model.CustomerId = id;
 
+            // Get and verify stored model information
+            var storedId = Jit_Memory_Object.GetProperty("Id");
+            var storedCustomerId = Jit_Memory_Object.GetProperty("CustomerId");
+            var storedData = Jit_Memory_Object.GetProperty("Data");
+
+            System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved stored Id: {storedId}");
+            System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved stored CustomerId: {storedCustomerId}");
+            System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved stored Data size: {(storedData as byte[])?.Length ?? 0} bytes");
+
+            // Retrieve centroids from JIT memory
+            var centroid1 = Jit_Memory_Object.GetProperty("Centroid_1");
+            var centroid2 = Jit_Memory_Object.GetProperty("Centroid_2");
+            var centroid3 = Jit_Memory_Object.GetProperty("Centroid_3");
+
+            System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved Centroid_1: {centroid1}");
+            System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved Centroid_2: {centroid2}");
+            System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved Centroid_3: {centroid3}");
+
+            // Retrieve and display AllSubProducts
+            var allSubProducts = Jit_Memory_Object.GetProperty("AllSubProducts") as List<dynamic>;
+            if (allSubProducts != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved AllSubProducts - Count: {allSubProducts.Count}");
+                foreach (var product in allSubProducts)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Product - Name: {product.ProductName}, Price: {product.Price}");
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("ProcessFactoryThree: No AllSubProducts found in JIT memory");
+            }
+
             System.Diagnostics.Debug.WriteLine("ProcessFactoryThree: Adding Stage3Complete property");
             Jit_Memory_Object.AddProperty("Stage3Complete", true);
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         private void ProcessFactoryFour(ModelDbInit model, int id, string name, string productType, Jit_Memory_Object jitObject)
         {
