@@ -43,6 +43,12 @@ public partial class PrimaryDbContext : DbContext
 
     public virtual DbSet<ModelDbInit> ModelDbInits { get; set; }
 
+    public virtual DbSet<ModelDbInitOperation> ModelDbInitOperations { get; set; }
+
+    public virtual DbSet<ModelDbInitQa> ModelDbInitQas { get; set; }
+
+    public virtual DbSet<ModelDbInitSale> ModelDbInitSales { get; set; }
+
     public virtual DbSet<ModelDbMuteP1> ModelDbMuteP1s { get; set; }
 
     public virtual DbSet<ModelDbMuteP1Customer> ModelDbMuteP1Customers { get; set; }
@@ -131,6 +137,11 @@ public partial class PrimaryDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("pk_CLient_Order");
 
             entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.HasOne(d => d.Customer).WithMany(p => p.ClientOrders)
+                .HasPrincipalKey(p => p.CustomerId)
+                .HasForeignKey(d => d.CustomerId)
+                .HasConstraintName("fk_client_order_model_db_init");
         });
 
         modelBuilder.Entity<Csr>(entity =>
@@ -208,6 +219,42 @@ public partial class PrimaryDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("pk_Model_DB_Init");
 
             entity.Property(e => e.Id).ValueGeneratedNever();
+        });
+
+        modelBuilder.Entity<ModelDbInitOperation>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("pk_Model_DB_Init_Operations");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.HasOne(d => d.Order).WithMany(p => p.ModelDbInitOperations)
+                .HasPrincipalKey(p => p.OrderId)
+                .HasForeignKey(d => d.OrderId)
+                .HasConstraintName("fk_model_db_init_operations");
+        });
+
+        modelBuilder.Entity<ModelDbInitQa>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("pk_Model_DB__Init_QA");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.HasOne(d => d.Order).WithMany(p => p.ModelDbInitQas)
+                .HasPrincipalKey(p => p.OrderId)
+                .HasForeignKey(d => d.OrderId)
+                .HasConstraintName("fk_model_db__init_qa");
+        });
+
+        modelBuilder.Entity<ModelDbInitSale>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("pk_Model_DB_Init_Sales");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.HasOne(d => d.Order).WithMany(p => p.ModelDbInitSales)
+                .HasPrincipalKey(p => p.OrderId)
+                .HasForeignKey(d => d.OrderId)
+                .HasConstraintName("fk_model_db_init_sales");
         });
 
         modelBuilder.Entity<ModelDbMuteP1>(entity =>

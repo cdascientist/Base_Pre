@@ -36,4 +36,7 @@ public partial class ModelDbInit
 
     [InverseProperty("Customer")]
     public virtual ClientInformation? ClientInformation { get; set; }
+
+    [InverseProperty("Customer")]
+    public virtual ICollection<ClientOrder> ClientOrders { get; set; } = new List<ClientOrder>();
 }

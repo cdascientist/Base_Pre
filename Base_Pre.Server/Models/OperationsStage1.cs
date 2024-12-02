@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Base_Pre.Server.Models;
 
 [Table("Operations_Stage_1")]
+[Index("OperationsId", Name = "unq_Operations_Stage_1_Operations_ID", IsUnique = true)]
 public partial class OperationsStage1
 {
     [Key]
@@ -48,4 +49,7 @@ public partial class OperationsStage1
 
     [Column("SubProduct_C")]
     public int? SubProductC { get; set; }
+
+    [Unicode(false)]
+    public string? Data { get; set; }
 }
