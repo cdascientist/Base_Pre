@@ -58,7 +58,9 @@ namespace Base_Pre.Server.Controllers
         private readonly PrimaryDbContext _context;
         private static readonly ConditionalWeakTable<object, Jit_Memory_Object> jitMemory =
             new ConditionalWeakTable<object, Jit_Memory_Object>();
-
+        // Add these tensor declarations here
+        private Tensor ProcessFactoryTwo_priceTrainData;
+        private Tensor ProcessFactoryTwo_nameTrainData;
         public ModelDbInitsController(PrimaryDbContext context)
         {
             _context = context;
@@ -748,6 +750,8 @@ namespace Base_Pre.Server.Controllers
                 System.Diagnostics.Debug.WriteLine($"Starting subproduct data collection for ProductType {productType}");
                 var allSubProducts = new List<dynamic>();
 
+                var All_allSubProducts = new List<dynamic>();
+
                 /// <summary>
                 /// Sample Data for new Customer for initial model 
                 /// </summary>
@@ -789,11 +793,58 @@ namespace Base_Pre.Server.Controllers
                 System.Diagnostics.Debug.WriteLine($"Found {subproductsC.Count} SubProduct C records");
 
                 /// <summary>
+                /// Sample Data for new Customer for initial model 
+                /// </summary>
+                /// NEW Get PRODUCTS from database to train on Lets load all the prices results into a local variable -2
+                System.Diagnostics.Debug.WriteLine("Fetching SubProduct A data");
+                var All_subproductsA = await _context.SubProductAs
+                    .AsNoTracking()
+                    .Select(p => new {
+                        p.Id,
+                        p.ProductName,
+                        p.ProductType,
+                        p.Quantity,
+                        Price = (float)p.Price
+                    })
+                    .ToListAsync();
+                All_allSubProducts.AddRange(subproductsA);
+                System.Diagnostics.Debug.WriteLine($"Found {subproductsA.Count} SubProduct A records");
+
+                System.Diagnostics.Debug.WriteLine("Fetching SubProduct B data");
+                var All_subproductsB = await _context.SubProductBs
+                    .AsNoTracking()
+                    .Select(p => new {
+                        p.Id,
+                        p.ProductName,
+                        p.ProductType,
+                        p.Quantity,
+                        Price = (float)p.Price
+                    })
+                    .ToListAsync();
+                All_allSubProducts.AddRange(subproductsB);
+                System.Diagnostics.Debug.WriteLine($"Found {subproductsB.Count} SubProduct B records");
+
+                System.Diagnostics.Debug.WriteLine("Fetching SubProduct C data");
+                var All_subproductsC = await _context.SubProductCs
+                    .AsNoTracking()
+                    .Select(p => new {
+                        p.Id,
+                        p.ProductName,
+                        p.ProductType,
+                        p.Quantity,
+                        Price = (float)p.Price
+                    })
+                    .ToListAsync();
+                All_allSubProducts.AddRange(subproductsC);
+                System.Diagnostics.Debug.WriteLine($"Found {subproductsC.Count} SubProduct C records");
+
+                /// <summary>
                 /// Store Sample Data in the Just in Time Compiler Memeory 
                 /// </summary>
                 /// 
                 // Store combined list in JIT memory
                 Jit_Memory_Object.AddProperty("AllSubProducts", allSubProducts);
+                Jit_Memory_Object.AddProperty("All_SubProducts", All_allSubProducts);
                 System.Diagnostics.Debug.WriteLine($"Total subproducts found: {allSubProducts.Count}");
                 model.ModelDbInitModelData = allSubProducts.Any();
                 System.Diagnostics.Debug.WriteLine("Subproduct data collection completed");
@@ -1094,13 +1145,31 @@ namespace Base_Pre.Server.Controllers
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         private void ProcessFactoryTwo(ModelDbInit model, int id, string name, string productType, Jit_Memory_Object jitObject)
         {
             System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Processing ProductType {productType}");
             model.ModelDbInitModelData = true;
-
-            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Setting CustomerId to {id}");
-            model.CustomerId = id;
 
             // Retrieve Operations record and Data
             System.Diagnostics.Debug.WriteLine("ProcessFactoryTwo: Retrieving Operations Record from JIT Memory");
@@ -1108,14 +1177,20 @@ namespace Base_Pre.Server.Controllers
             var operationsData = operationsRecord?.Data;
             System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved Operations Data: {operationsData ?? "null"}");
 
-            // Rest of your existing code...
+            // Retrieve OperationsStage1 record and Data
+            System.Diagnostics.Debug.WriteLine("ProcessFactoryTwo: Retrieving OperationsStage1 Record from JIT Memory");
+            var operationsStage1Record = Jit_Memory_Object.GetProperty("OperationsStage1Record") as OperationsStage1;
+            var operationsStage1Data = operationsStage1Record?.Data;
+            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved OperationsStage1 Data: {operationsStage1Data ?? "null"}");
+
+            // Get and verify stored model information
             var storedId = Jit_Memory_Object.GetProperty("Id");
             var storedCustomerId = Jit_Memory_Object.GetProperty("CustomerId");
-            var storedData = Jit_Memory_Object.GetProperty("Data");
+            var storedData = Jit_Memory_Object.GetProperty("Data") as byte[];
 
             System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved stored Id: {storedId}");
             System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved stored CustomerId: {storedCustomerId}");
-            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved stored Data size: {(storedData as byte[])?.Length ?? 0} bytes");
+            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved stored Data size: {storedData?.Length ?? 0} bytes");
 
             // Retrieve centroids from JIT memory
             var centroid1 = Jit_Memory_Object.GetProperty("Centroid_1");
@@ -1126,14 +1201,309 @@ namespace Base_Pre.Server.Controllers
             System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved Centroid_2: {centroid2}");
             System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved Centroid_3: {centroid3}");
 
-            // Retrieve and display AllSubProducts
-            var allSubProducts = Jit_Memory_Object.GetProperty("AllSubProducts") as List<dynamic>;
-            if (allSubProducts != null)
+            // Retrieve and process AllSubProducts
+            var allSubProducts = Jit_Memory_Object.GetProperty("All_SubProducts") as List<dynamic>;
+
+            if (allSubProducts != null && allSubProducts.Any())
             {
-                System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved AllSubProducts - Count: {allSubProducts.Count}");
-                foreach (var product in allSubProducts)
+                System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved All_SubProducts - Count: {allSubProducts.Count}");
+
+                // Lists for processed data
+                var combinedNames = new List<string>();
+                var combinedPrices = new List<float>();
+
+                try
                 {
-                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Product - Name: {product.ProductName}, Price: {product.Price}");
+                    // Process each product
+                    foreach (dynamic product in allSubProducts)
+                    {
+                        if (product == null) continue;
+
+                        try
+                        {
+                            string productName = Convert.ToString(product.ProductName);
+                            float productPrice = Convert.ToSingle(product.Price);
+
+                            if (!string.IsNullOrEmpty(productName) && productPrice > 0)
+                            {
+                                combinedNames.Add(productName);
+                                combinedPrices.Add(productPrice);
+                                System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Processed product - Name: {productName}, Price: {productPrice}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Error processing individual product: {ex.Message}");
+                            continue;
+                        }
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Successfully processed {combinedNames.Count} products");
+
+                    // Store processed data in JIT memory
+                    Jit_Memory_Object.AddProperty("Combined_Names", combinedNames);
+                    Jit_Memory_Object.AddProperty("Combined_Prices", combinedPrices);
+
+                    // Proceed only if we have valid data
+                    if (combinedPrices.Any() && combinedNames.Any())
+                    {
+                        // Create price tensor
+                        var priceTrainData = tf.convert_to_tensor(combinedPrices.ToArray(), dtype: TF_DataType.TF_FLOAT);
+                        priceTrainData = tf.reshape(priceTrainData, new[] { -1, 1 });
+                        System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Created price tensor with shape: {string.Join(", ", priceTrainData.shape)}");
+
+                        // Create name tensor with one-hot encoding
+                        var uniqueNames = combinedNames.Distinct().ToList();
+                        var nameToIndex = uniqueNames.Select((productName, index) => new { productName, index })
+                                             .ToDictionary(x => x.productName, x => x.index);
+                        var nameIndices = combinedNames.Select(name => nameToIndex[name]).ToArray();
+                        var oneHotNames = new float[nameIndices.Length, uniqueNames.Count];
+
+                        // Perform one-hot encoding
+                        for (int i = 0; i < nameIndices.Length; i++)
+                        {
+                            oneHotNames[i, nameIndices[i]] = 1.0f;
+                        }
+
+                        var nameTrainData = tf.convert_to_tensor(oneHotNames, dtype: TF_DataType.TF_FLOAT);
+                        System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Created name tensor with shape: {string.Join(", ", nameTrainData.shape)}");
+
+                        // Store tensors in JIT memory
+                        Jit_Memory_Object.AddProperty("ProcessFactoryTwo_PriceTensor", priceTrainData);
+                        Jit_Memory_Object.AddProperty("ProcessFactoryTwo_NameTensor", nameTrainData);
+
+                        // Combine features for training
+                        var combinedTrainData = tf.concat(new[] { priceTrainData, nameTrainData }, axis: 1);
+                        System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Created combined tensor with shape: {string.Join(", ", combinedTrainData.shape)}");
+
+                        // Initialize model parameters
+                        var inputDim = 1 + uniqueNames.Count;
+                        var W = tf.Variable(tf.random.normal(new[] { inputDim, 1 }));
+                        var b = tf.Variable(tf.zeros(new[] { 1 }));
+
+                        // Training parameters
+                        int epochs = 100;
+                        float learningRate = 1e-2f;
+                        float convergenceThreshold = 1e-6f;
+                        float previousLoss = float.MaxValue;
+                        int stableEpochs = 0;
+
+                        // Training loop with additional safeguards
+                        for (int epoch = 0; epoch < epochs; epoch++)
+                        {
+                            using (var tape = tf.GradientTape())
+                            {
+                                var predictions = tf.matmul(combinedTrainData, W) + b;
+                                var loss = tf.reduce_mean(tf.square(predictions - priceTrainData));
+                                float currentLoss = loss.numpy();
+
+                                // Check for valid loss value
+                                if (!float.IsNaN(currentLoss) && !float.IsInfinity(currentLoss))
+                                {
+                                    var gradients = tape.gradient(loss, new[] { W, b });
+                                    W.assign_sub(gradients[0] * learningRate);
+                                    b.assign_sub(gradients[1] * learningRate);
+
+                                    // Convergence check
+                                    if (Math.Abs(previousLoss - currentLoss) < convergenceThreshold)
+                                    {
+                                        stableEpochs++;
+                                        if (stableEpochs >= 5)
+                                        {
+                                            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Converged at epoch {epoch}");
+                                            break;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        stableEpochs = 0;
+                                    }
+
+                                    previousLoss = currentLoss;
+
+                                    if (epoch % 10 == 0)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Epoch {epoch}, Loss: {currentLoss}");
+                                    }
+                                }
+                                else
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Invalid loss detected at epoch {epoch}");
+                                    learningRate *= 0.5f;
+                                    if (learningRate < 1e-6f)
+                                    {
+                                        throw new Exception("Training unstable - learning rate too small");
+                                    }
+                                }
+                            }
+                        }
+
+                        // Model serialization and merging
+                        System.Diagnostics.Debug.WriteLine("ProcessFactoryTwo: Starting model serialization and merging");
+                        using (var memoryStream = new MemoryStream())
+                        using (var writer = new BinaryWriter(memoryStream))
+                        {
+                            // Get original model data size
+                            var originalSize = storedData?.Length ?? 0;
+                            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Original model size: {originalSize} bytes");
+
+                            // Write header information
+                            writer.Write(DateTime.UtcNow.Ticks);  // Timestamp
+                            writer.Write(originalSize);           // Size of original model
+
+                            // Write stored model data if it exists
+                            if (storedData != null && storedData.Length > 0)
+                            {
+                                writer.Write(storedData);
+                                System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Writing stored model data: {storedData.Length} bytes");
+                            }
+
+                            // Write new model identifier
+                            writer.Write("MODEL_V2");  // Version identifier
+
+                            // Write new model weights
+                            var wData = W.numpy().ToArray<float>();
+                            writer.Write(wData.Length);
+                            foreach (var w in wData)
+                            {
+                                writer.Write(w);
+                            }
+                            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Writing new model weights: {wData.Length} elements");
+
+                            // Write new model bias
+                            var bData = b.numpy().ToArray<float>();
+                            writer.Write(bData.Length);
+                            foreach (var bias in bData)
+                            {
+                                writer.Write(bias);
+                            }
+                            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Writing new model bias: {bData.Length} elements");
+
+                            // Write training metadata
+                            writer.Write(inputDim);
+                            writer.Write(uniqueNames.Count);
+                            foreach (var uniqueName in uniqueNames)
+                            {
+                                writer.Write(uniqueName);
+                            }
+
+                            // Get merged model data
+                            var mergedModelData = memoryStream.ToArray();
+                            var newSize = mergedModelData.Length;
+
+                            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: New model size: {newSize} bytes");
+                            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Size difference: {newSize - originalSize} bytes");
+
+                            // Verify merged data
+                            using (var verifyStream = new MemoryStream(mergedModelData))
+                            using (var reader = new BinaryReader(verifyStream))
+                            {
+                                try
+                                {
+                                    var timestamp = reader.ReadInt64();  // Read timestamp
+                                    var storedSize = reader.ReadInt32(); // Read stored size
+
+                                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Verifying merge - Timestamp: {new DateTime(timestamp).ToString("yyyy-MM-dd HH:mm:ss")}");
+                                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Verifying merge - Original size matches: {storedSize == originalSize}");
+
+                                    // Read and verify original model if it existed
+                                    if (storedSize > 0)
+                                    {
+                                        var originalData = reader.ReadBytes(storedSize);
+                                        System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Original model data verified: {originalData.Length == storedSize}");
+                                    }
+
+                                    // Verify new model identifier
+                                    var modelVersion = reader.ReadString();
+                                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Model version verified: {modelVersion}");
+
+                                    // Verify weights and bias data
+                                    var weightCount = reader.ReadInt32();
+                                    var weights = new float[weightCount];
+                                    for (int i = 0; i < weightCount; i++)
+                                    {
+                                        weights[i] = reader.ReadSingle();
+                                    }
+
+                                    var biasCount = reader.ReadInt32();
+                                    var biases = new float[biasCount];
+                                    for (int i = 0; i < biasCount; i++)
+                                    {
+                                        biases[i] = reader.ReadSingle();
+                                    }
+
+                                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Weights verified: {weights.Length == wData.Length}");
+                                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Biases verified: {biases.Length == bData.Length}");
+
+                                    // Verify metadata
+                                    var verifiedInputDim = reader.ReadInt32();
+                                    var verifiedNameCount = reader.ReadInt32();
+                                    var verifiedNames = new List<string>();
+                                    for (int i = 0; i < verifiedNameCount; i++)
+                                    {
+                                        verifiedNames.Add(reader.ReadString());
+                                    }
+
+                                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Input dimension verified: {verifiedInputDim == inputDim}");
+                                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Unique names verified: {verifiedNames.Count == uniqueNames.Count}");
+
+                                    // Store verified merged data
+                                    if (verifiedInputDim == inputDim && verifiedNames.Count == uniqueNames.Count)
+                                    {
+                                        // Update the stored data with merged model
+                                        storedData = mergedModelData;
+
+                                        // Update JIT memory with new merged model
+                                        Jit_Memory_Object.AddProperty("Data", storedData);
+                                        System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Updated stored model data. New size: {storedData.Length} bytes");
+
+                                        // Store all components
+                                        Jit_Memory_Object.AddProperty("ProcessFactoryTwo_ModelWeights", wData);
+                                        Jit_Memory_Object.AddProperty("ProcessFactoryTwo_ModelBias", bData);
+                                        Jit_Memory_Object.AddProperty("ProcessFactoryTwo_ModelData", mergedModelData);
+                                        Jit_Memory_Object.AddProperty("ProcessFactoryTwo_InputDim", inputDim);
+                                        Jit_Memory_Object.AddProperty("ProcessFactoryTwo_UniqueNames", uniqueNames);
+
+                                        // Update model object
+                                        model.Data = storedData;
+
+                                        System.Diagnostics.Debug.WriteLine("ProcessFactoryTwo: Model merge verified and all storage locations updated successfully");
+
+                                        // Verify the update
+                                        var verifyStoredData = Jit_Memory_Object.GetProperty("Data") as byte[];
+                                        if (verifyStoredData?.Length == storedData.Length)
+                                        {
+                                            System.Diagnostics.Debug.WriteLine("ProcessFactoryTwo: Stored data update verification successful");
+                                        }
+                                        else
+                                        {
+                                            throw new Exception("Failed to verify stored data update");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        throw new Exception("Model merge verification failed");
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Model merge verification failed: {ex.Message}");
+                                    throw new Exception("Failed to verify merged model data", ex);
+                                }
+                            }
+                        }
+
+                        System.Diagnostics.Debug.WriteLine("ProcessFactoryTwo: Machine learning implementation completed successfully");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("ProcessFactoryTwo: No valid data for tensor creation");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Error during processing: {ex.Message}");
+                    throw;
                 }
             }
             else
@@ -1158,49 +1528,31 @@ namespace Base_Pre.Server.Controllers
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         private void ProcessFactoryThree(ModelDbInit model, int id, string name, string productType, Jit_Memory_Object jitObject)
         {
-            System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Processing ProductType {productType}");
-            model.ModelDbInitModelData = true;
-
-            System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Setting CustomerId to {id}");
-            model.CustomerId = id;
-
-            // Get and verify stored model information
-            var storedId = Jit_Memory_Object.GetProperty("Id");
-            var storedCustomerId = Jit_Memory_Object.GetProperty("CustomerId");
-            var storedData = Jit_Memory_Object.GetProperty("Data");
-
-            System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved stored Id: {storedId}");
-            System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved stored CustomerId: {storedCustomerId}");
-            System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved stored Data size: {(storedData as byte[])?.Length ?? 0} bytes");
-
-            // Retrieve centroids from JIT memory
-            var centroid1 = Jit_Memory_Object.GetProperty("Centroid_1");
-            var centroid2 = Jit_Memory_Object.GetProperty("Centroid_2");
-            var centroid3 = Jit_Memory_Object.GetProperty("Centroid_3");
-
-            System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved Centroid_1: {centroid1}");
-            System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved Centroid_2: {centroid2}");
-            System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved Centroid_3: {centroid3}");
-
-            // Retrieve and display AllSubProducts
-            var allSubProducts = Jit_Memory_Object.GetProperty("AllSubProducts") as List<dynamic>;
-            if (allSubProducts != null)
-            {
-                System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved AllSubProducts - Count: {allSubProducts.Count}");
-                foreach (var product in allSubProducts)
-                {
-                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Product - Name: {product.ProductName}, Price: {product.Price}");
-                }
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("ProcessFactoryThree: No AllSubProducts found in JIT memory");
-            }
+            
 
             System.Diagnostics.Debug.WriteLine("ProcessFactoryThree: Adding Stage3Complete property");
-            Jit_Memory_Object.AddProperty("Stage3Complete", true);
+            
         }
 
 
