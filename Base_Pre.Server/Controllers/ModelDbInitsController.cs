@@ -748,14 +748,19 @@ namespace Base_Pre.Server.Controllers
                 System.Diagnostics.Debug.WriteLine($"Verification - Data Size: {(storedData as byte[])?.Length ?? 0} bytes");
 
                 System.Diagnostics.Debug.WriteLine($"Starting subproduct data collection for ProductType {productType}");
-                var allSubProducts = new List<dynamic>();
 
+
+
+
+                // Initialize collection lists
+                var allSubProducts = new List<dynamic>();
                 var All_allSubProducts = new List<dynamic>();
+                var All_SubServices = new List<dynamic>();
 
                 /// <summary>
-                /// Sample Data for new Customer for initial model 
+                /// SECTION 1: Filtered Product Data Collection
+                /// Collect products filtered by product type
                 /// </summary>
-                /// NEW Get PRODUCTS from database to train on Lets load all the prices results into a local variable -2
                 System.Diagnostics.Debug.WriteLine("Fetching SubProduct A data");
                 var subproductsA = await _context.SubProductAs
                     .AsNoTracking()
@@ -793,10 +798,10 @@ namespace Base_Pre.Server.Controllers
                 System.Diagnostics.Debug.WriteLine($"Found {subproductsC.Count} SubProduct C records");
 
                 /// <summary>
-                /// Sample Data for new Customer for initial model 
+                /// SECTION 2: Complete Product Data Collection
+                /// Collect all products without filtering
                 /// </summary>
-                /// NEW Get PRODUCTS from database to train on Lets load all the prices results into a local variable -2
-                System.Diagnostics.Debug.WriteLine("Fetching SubProduct A data");
+                System.Diagnostics.Debug.WriteLine("Fetching ALL SubProduct A data");
                 var All_subproductsA = await _context.SubProductAs
                     .AsNoTracking()
                     .Select(p => new {
@@ -807,10 +812,10 @@ namespace Base_Pre.Server.Controllers
                         Price = (float)p.Price
                     })
                     .ToListAsync();
-                All_allSubProducts.AddRange(subproductsA);
-                System.Diagnostics.Debug.WriteLine($"Found {subproductsA.Count} SubProduct A records");
+                All_allSubProducts.AddRange(All_subproductsA);
+                System.Diagnostics.Debug.WriteLine($"Found {All_subproductsA.Count} SubProduct A ALL records");
 
-                System.Diagnostics.Debug.WriteLine("Fetching SubProduct B data");
+                System.Diagnostics.Debug.WriteLine("Fetching ALL SubProduct B data");
                 var All_subproductsB = await _context.SubProductBs
                     .AsNoTracking()
                     .Select(p => new {
@@ -821,10 +826,10 @@ namespace Base_Pre.Server.Controllers
                         Price = (float)p.Price
                     })
                     .ToListAsync();
-                All_allSubProducts.AddRange(subproductsB);
-                System.Diagnostics.Debug.WriteLine($"Found {subproductsB.Count} SubProduct B records");
+                All_allSubProducts.AddRange(All_subproductsB);
+                System.Diagnostics.Debug.WriteLine($"Found {All_subproductsB.Count} SubProduct B ALL records");
 
-                System.Diagnostics.Debug.WriteLine("Fetching SubProduct C data");
+                System.Diagnostics.Debug.WriteLine("Fetching ALL SubProduct C data");
                 var All_subproductsC = await _context.SubProductCs
                     .AsNoTracking()
                     .Select(p => new {
@@ -835,16 +840,68 @@ namespace Base_Pre.Server.Controllers
                         Price = (float)p.Price
                     })
                     .ToListAsync();
-                All_allSubProducts.AddRange(subproductsC);
-                System.Diagnostics.Debug.WriteLine($"Found {subproductsC.Count} SubProduct C records");
+                All_allSubProducts.AddRange(All_subproductsC);
+                System.Diagnostics.Debug.WriteLine($"Found {All_subproductsC.Count} SubProduct C ALL records");
 
                 /// <summary>
-                /// Store Sample Data in the Just in Time Compiler Memeory 
+                /// SECTION 3: Complete Service Data Collection
+                /// Collect all services without filtering
                 /// </summary>
-                /// 
-                // Store combined list in JIT memory
+                System.Diagnostics.Debug.WriteLine("Fetching ALL SubService A data");
+                var All_subservicesA = await _context.SubServiceAs
+                    .AsNoTracking()
+                    .Select(p => new {
+                        p.Id,
+                        p.ServiceName,
+                        p.ServiceType,
+                        p.Quantity,
+                        Price = (float)p.Price
+                    })
+                    .ToListAsync();
+                All_SubServices.AddRange(All_subservicesA);
+                System.Diagnostics.Debug.WriteLine($"Found {All_subservicesA.Count} SubService A ALL records");
+
+                System.Diagnostics.Debug.WriteLine("Fetching ALL SubService B data");
+                var All_subservicesB = await _context.SubServiceBs
+                    .AsNoTracking()
+                    .Select(p => new {
+                        p.Id,
+                        p.ServiceName,
+                        p.ServiceType,
+                        p.Quantity,
+                        Price = (float)p.Price
+                    })
+                    .ToListAsync();
+                All_SubServices.AddRange(All_subservicesB);
+                System.Diagnostics.Debug.WriteLine($"Found {All_subservicesB.Count} SubService B ALL records");
+
+                System.Diagnostics.Debug.WriteLine("Fetching ALL SubService C data");
+                var All_subservicesC = await _context.SubServiceCs
+                    .AsNoTracking()
+                    .Select(p => new {
+                        p.Id,
+                        p.ServiceName,
+                        p.ServiceType,
+                        p.Quantity,
+                        Price = (float)p.Price
+                    })
+                    .ToListAsync();
+                All_SubServices.AddRange(All_subservicesC);
+                System.Diagnostics.Debug.WriteLine($"Found {All_subservicesC.Count} SubService C ALL records");
+
+                /// <summary>
+                /// SECTION 4: Store Data in JIT Memory
+                /// Store all collected data in JIT memory for later use
+                /// </summary>
                 Jit_Memory_Object.AddProperty("AllSubProducts", allSubProducts);
                 Jit_Memory_Object.AddProperty("All_SubProducts", All_allSubProducts);
+                Jit_Memory_Object.AddProperty("All_SubServices", All_SubServices);
+
+
+
+
+
+
                 System.Diagnostics.Debug.WriteLine($"Total subproducts found: {allSubProducts.Count}");
                 model.ModelDbInitModelData = allSubProducts.Any();
                 System.Diagnostics.Debug.WriteLine("Subproduct data collection completed");
@@ -1160,22 +1217,14 @@ namespace Base_Pre.Server.Controllers
 
 
 
-
-
-
-
-
-
         private void ProcessFactoryTwo(ModelDbInit model, int id, string name, string productType, Jit_Memory_Object jitObject)
         {
-            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Processing ProductType {productType}");
+           
             model.ModelDbInitModelData = true;
 
-            // Retrieve Operations record and Data
-            System.Diagnostics.Debug.WriteLine("ProcessFactoryTwo: Retrieving Operations Record from JIT Memory");
-            var operationsRecord = Jit_Memory_Object.GetProperty("OperationsRecord") as ModelDbInitOperation;
-            var operationsData = operationsRecord?.Data;
-            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved Operations Data: {operationsData ?? "null"}");
+           
+
+
 
             // Retrieve OperationsStage1 record and Data
             System.Diagnostics.Debug.WriteLine("ProcessFactoryTwo: Retrieving OperationsStage1 Record from JIT Memory");
@@ -1192,21 +1241,31 @@ namespace Base_Pre.Server.Controllers
             System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved stored CustomerId: {storedCustomerId}");
             System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved stored Data size: {storedData?.Length ?? 0} bytes");
 
-            // Retrieve centroids from JIT memory
-            var centroid1 = Jit_Memory_Object.GetProperty("Centroid_1");
-            var centroid2 = Jit_Memory_Object.GetProperty("Centroid_2");
-            var centroid3 = Jit_Memory_Object.GetProperty("Centroid_3");
-
-            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved Centroid_1: {centroid1}");
-            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved Centroid_2: {centroid2}");
-            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved Centroid_3: {centroid3}");
-
-            // Retrieve and process AllSubProducts
-            var allSubProducts = Jit_Memory_Object.GetProperty("All_SubProducts") as List<dynamic>;
-
-            if (allSubProducts != null && allSubProducts.Any())
+            // Collect SubProduct fields from operationsStage1Record
+            var stageSubProducts = new List<int?>();
+            if (operationsStage1Record != null)
             {
-                System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved All_SubProducts - Count: {allSubProducts.Count}");
+                stageSubProducts.Add(operationsStage1Record.SubProductA);
+                stageSubProducts.Add(operationsStage1Record.SubProductB);
+                stageSubProducts.Add(operationsStage1Record.SubProductC);
+                System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Collected {stageSubProducts.Count} SubProduct IDs from OperationsStage1");
+            }
+
+           
+
+
+
+
+
+
+            // Filter products by stage SubProduct IDs
+            var allSubProducts = Jit_Memory_Object.GetProperty("All_SubProducts") as List<dynamic>;
+            var filteredProducts = allSubProducts?.Where(p => stageSubProducts.Contains((int)p.Id)).ToList();
+            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Filtered products count: {filteredProducts?.Count ?? 0}");
+
+            if (filteredProducts != null && filteredProducts.Any())
+            {
+                System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved All_SubProducts - Count: {filteredProducts.Count}");
 
                 // Lists for processed data
                 var combinedNames = new List<string>();
@@ -1215,7 +1274,7 @@ namespace Base_Pre.Server.Controllers
                 try
                 {
                     // Process each product
-                    foreach (dynamic product in allSubProducts)
+                    foreach (dynamic product in filteredProducts)
                     {
                         if (product == null) continue;
 
@@ -1453,9 +1512,9 @@ namespace Base_Pre.Server.Controllers
                                         // Update the stored data with merged model
                                         storedData = mergedModelData;
 
-                                        // Update JIT memory with new merged model
-                                        Jit_Memory_Object.AddProperty("Data", storedData);
-                                        System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Updated stored model data. New size: {storedData.Length} bytes");
+                                        // Store new model data in separate property
+                                        Jit_Memory_Object.AddProperty("ProcessStageTwo_Data", mergedModelData);
+                                        System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Created ProcessStageTwo_Data. Size: {mergedModelData.Length} bytes");
 
                                         // Store all components
                                         Jit_Memory_Object.AddProperty("ProcessFactoryTwo_ModelWeights", wData);
@@ -1470,14 +1529,14 @@ namespace Base_Pre.Server.Controllers
                                         System.Diagnostics.Debug.WriteLine("ProcessFactoryTwo: Model merge verified and all storage locations updated successfully");
 
                                         // Verify the update
-                                        var verifyStoredData = Jit_Memory_Object.GetProperty("Data") as byte[];
-                                        if (verifyStoredData?.Length == storedData.Length)
+                                        var verifyStoredData = Jit_Memory_Object.GetProperty("ProcessStageTwo_Data") as byte[];
+                                        if (verifyStoredData?.Length == mergedModelData.Length)
                                         {
-                                            System.Diagnostics.Debug.WriteLine("ProcessFactoryTwo: Stored data update verification successful");
+                                            System.Diagnostics.Debug.WriteLine("ProcessFactoryTwo: ProcessStageTwo_Data verification successful");
                                         }
                                         else
                                         {
-                                            throw new Exception("Failed to verify stored data update");
+                                            throw new Exception("Failed to verify ProcessStageTwo_Data update");
                                         }
                                     }
                                     else
@@ -1542,21 +1601,252 @@ namespace Base_Pre.Server.Controllers
 
 
 
-
-
-
-
-
         private void ProcessFactoryThree(ModelDbInit model, int id, string name, string productType, Jit_Memory_Object jitObject)
         {
-            
+            try
+            {
+                model.ModelDbInitModelData = true;
 
-            System.Diagnostics.Debug.WriteLine("ProcessFactoryThree: Adding Stage3Complete property");
-            
+                // Retrieve OperationsStage1 record and Data
+                System.Diagnostics.Debug.WriteLine("ProcessFactoryThree: Retrieving OperationsStage1 Record from JIT Memory");
+                var operationsStage1Record = Jit_Memory_Object.GetProperty("OperationsStage1Record") as OperationsStage1;
+                var operationsStage1Data = operationsStage1Record?.Data;
+                System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved OperationsStage1 Data: {operationsStage1Data ?? "null"}");
+
+                // Get and verify stored model information
+                var storedIdPT3 = Jit_Memory_Object.GetProperty("Id");
+                var storedCustomerIdPT3 = Jit_Memory_Object.GetProperty("CustomerId");
+                var storedDataPT3 = Jit_Memory_Object.GetProperty("Data") as byte[];
+
+                System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved stored Id: {storedIdPT3}");
+                System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved stored CustomerId: {storedCustomerIdPT3}");
+                System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved stored Data size: {storedDataPT3?.Length ?? 0} bytes");
+
+                // Collect SubService fields from operationsStage1Record
+                var stageSubServices = new List<int?>();
+                if (operationsStage1Record != null)
+                {
+                    stageSubServices.Add(operationsStage1Record.SubServiceA);
+                    stageSubServices.Add(operationsStage1Record.SubServiceB);
+                    stageSubServices.Add(operationsStage1Record.SubServiceC);
+                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Collected {stageSubServices.Count} SubService IDs from OperationsStage1");
+                }
+
+                // Filter services by stage SubService IDs
+                var allServices = Jit_Memory_Object.GetProperty("All_SubServices") as List<dynamic>;
+                var filteredServices = allServices?.Where(s => stageSubServices.Contains((int)s.Id)).ToList();
+                System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Filtered services count: {filteredServices?.Count ?? 0}");
+
+                if (filteredServices != null && filteredServices.Any())
+                {
+                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Retrieved All_SubServices - Count: {filteredServices.Count}");
+
+                    // Lists for processed data
+                    var combinedNamesPT3 = new List<string>();
+                    var combinedPricesPT3 = new List<float>();
+
+                    try
+                    {
+                        // Process each service
+                        foreach (dynamic service in filteredServices)
+                        {
+                            if (service == null) continue;
+
+                            try
+                            {
+                                string serviceName = Convert.ToString(service.ServiceName);
+                                float servicePrice = Convert.ToSingle(service.Price);
+
+                                if (!string.IsNullOrEmpty(serviceName) && servicePrice > 0)
+                                {
+                                    combinedNamesPT3.Add(serviceName);
+                                    combinedPricesPT3.Add(servicePrice);
+                                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Processed service - Name: {serviceName}, Price: {servicePrice}");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Error processing individual service: {ex.Message}");
+                                continue;
+                            }
+                        }
+
+                        System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Successfully processed {combinedNamesPT3.Count} services");
+
+                        // Store processed data in JIT memory with PT3 suffix
+                        Jit_Memory_Object.AddProperty("Combined_Names_PT3", combinedNamesPT3);
+                        Jit_Memory_Object.AddProperty("Combined_Prices_PT3", combinedPricesPT3);
+
+                        if (combinedPricesPT3.Any() && combinedNamesPT3.Any())
+                        {
+                            // Create price tensor
+                            var priceTrainDataPT3 = tf.convert_to_tensor(combinedPricesPT3.ToArray(), dtype: TF_DataType.TF_FLOAT);
+                            priceTrainDataPT3 = tf.reshape(priceTrainDataPT3, new[] { -1, 1 });
+                            System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Created price tensor with shape: {string.Join(", ", priceTrainDataPT3.shape)}");
+
+                            // Create name tensor with one-hot encoding
+                            var uniqueNamesPT3 = combinedNamesPT3.Distinct().ToList();
+                            var nameToIndexPT3 = uniqueNamesPT3.Select((serviceName, index) => new { serviceName, index })
+                                                  .ToDictionary(x => x.serviceName, x => x.index);
+                            var nameIndicesPT3 = combinedNamesPT3.Select(name => nameToIndexPT3[name]).ToArray();
+                            var oneHotNamesPT3 = new float[nameIndicesPT3.Length, uniqueNamesPT3.Count];
+
+                            for (int i = 0; i < nameIndicesPT3.Length; i++)
+                            {
+                                oneHotNamesPT3[i, nameIndicesPT3[i]] = 1.0f;
+                            }
+
+                            var nameTrainDataPT3 = tf.convert_to_tensor(oneHotNamesPT3, dtype: TF_DataType.TF_FLOAT);
+                            System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Created name tensor with shape: {string.Join(", ", nameTrainDataPT3.shape)}");
+
+                            // Store tensors in JIT memory
+                            Jit_Memory_Object.AddProperty("ProcessFactoryThree_PriceTensor", priceTrainDataPT3);
+                            Jit_Memory_Object.AddProperty("ProcessFactoryThree_NameTensor", nameTrainDataPT3);
+
+                            // Combine features for training
+                            var combinedTrainDataPT3 = tf.concat(new[] { priceTrainDataPT3, nameTrainDataPT3 }, axis: 1);
+                            System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Created combined tensor with shape: {string.Join(", ", combinedTrainDataPT3.shape)}");
+
+                            // Initialize model parameters
+                            var inputDimPT3 = 1 + uniqueNamesPT3.Count;
+                            var WPT3 = tf.Variable(tf.random.normal(new[] { inputDimPT3, 1 }), name: "WPT3");
+                            var bPT3 = tf.Variable(tf.zeros(new[] { 1 }), name: "bPT3");
+
+                            // Training parameters
+                            int epochsPT3 = 100;
+                            float learningRatePT3 = 1e-2f;
+                            float convergenceThresholdPT3 = 1e-6f;
+                            float previousLossPT3 = float.MaxValue;
+                            int stableEpochsPT3 = 0;
+
+                            for (int epoch = 0; epoch < epochsPT3; epoch++)
+                            {
+                                using (var tape = tf.GradientTape())
+                                {
+                                    var predictionsPT3 = tf.matmul(combinedTrainDataPT3, WPT3) + bPT3;
+                                    var lossPT3 = tf.reduce_mean(tf.square(predictionsPT3 - priceTrainDataPT3));
+                                    float currentLoss = lossPT3.numpy();
+
+                                    if (!float.IsNaN(currentLoss) && !float.IsInfinity(currentLoss))
+                                    {
+                                        var gradients = tape.gradient(lossPT3, new[] { WPT3, bPT3 });
+                                        WPT3.assign_sub(gradients[0] * learningRatePT3);
+                                        bPT3.assign_sub(gradients[1] * learningRatePT3);
+
+                                        if (Math.Abs(previousLossPT3 - currentLoss) < convergenceThresholdPT3)
+                                        {
+                                            stableEpochsPT3++;
+                                            if (stableEpochsPT3 >= 5)
+                                            {
+                                                System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Converged at epoch {epoch}");
+                                                break;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            stableEpochsPT3 = 0;
+                                        }
+
+                                        previousLossPT3 = currentLoss;
+
+                                        if (epoch % 10 == 0)
+                                        {
+                                            System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Epoch {epoch}, Loss: {currentLoss}");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Invalid loss detected at epoch {epoch}");
+                                        learningRatePT3 *= 0.5f;
+                                        if (learningRatePT3 < 1e-6f)
+                                        {
+                                            throw new Exception("Training unstable - learning rate too small");
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Model serialization
+                            System.Diagnostics.Debug.WriteLine("ProcessFactoryThree: Starting model serialization");
+                            using (var memoryStream = new MemoryStream())
+                            using (var writer = new BinaryWriter(memoryStream))
+                            {
+                                var originalSize = storedDataPT3?.Length ?? 0;
+                                System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Original model size: {originalSize} bytes");
+
+                                writer.Write(DateTime.UtcNow.Ticks);
+                                writer.Write(originalSize);
+
+                                if (storedDataPT3 != null && storedDataPT3.Length > 0)
+                                {
+                                    writer.Write(storedDataPT3);
+                                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Writing stored model data: {storedDataPT3.Length} bytes");
+                                }
+
+                                writer.Write("MODEL_V2_PT3");
+
+                                var wDataPT3 = WPT3.numpy().ToArray<float>();
+                                writer.Write(wDataPT3.Length);
+                                foreach (var w in wDataPT3)
+                                {
+                                    writer.Write(w);
+                                }
+                                System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Writing new model weights: {wDataPT3.Length} elements");
+
+                                var bDataPT3 = bPT3.numpy().ToArray<float>();
+                                writer.Write(bDataPT3.Length);
+                                foreach (var bias in bDataPT3)
+                                {
+                                    writer.Write(bias);
+                                }
+                                System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Writing new model bias: {bDataPT3.Length} elements");
+
+                                writer.Write(inputDimPT3);
+                                writer.Write(uniqueNamesPT3.Count);
+                                foreach (var uniqueName in uniqueNamesPT3)
+                                {
+                                    writer.Write(uniqueName);
+                                }
+
+                                var mergedModelDataPT3 = memoryStream.ToArray();
+
+                                // Store all components
+                                Jit_Memory_Object.AddProperty("ProcessStageThree_Data", mergedModelDataPT3);
+                                Jit_Memory_Object.AddProperty("ProcessFactoryThree_ModelWeights", wDataPT3);
+                                Jit_Memory_Object.AddProperty("ProcessFactoryThree_ModelBias", bDataPT3);
+                                Jit_Memory_Object.AddProperty("ProcessFactoryThree_InputDim", inputDimPT3);
+                                Jit_Memory_Object.AddProperty("ProcessFactoryThree_UniqueNames", uniqueNamesPT3);
+
+                                System.Diagnostics.Debug.WriteLine("ProcessFactoryThree: Model serialization completed successfully");
+                            }
+
+                            System.Diagnostics.Debug.WriteLine("ProcessFactoryThree: Machine learning implementation completed successfully");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("ProcessFactoryThree: No valid data for tensor creation");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Error during processing: {ex.Message}");
+                        throw;
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("ProcessFactoryThree: No services found in JIT memory");
+                }
+
+                System.Diagnostics.Debug.WriteLine("ProcessFactoryThree: Adding Stage3Complete property");
+                Jit_Memory_Object.AddProperty("Stage3Complete", true);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Fatal error: {ex.Message}");
+                throw;
+            }
         }
-
-
-
 
 
 
