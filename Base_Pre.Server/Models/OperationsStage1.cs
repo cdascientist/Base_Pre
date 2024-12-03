@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 namespace Base_Pre.Server.Models;
 
 [Table("Operations_Stage_1")]
-[Index("OperationsId", Name = "unq_Operations_Stage_1_Operations_ID", IsUnique = true)]
 public partial class OperationsStage1
 {
     [Key]
@@ -52,4 +51,32 @@ public partial class OperationsStage1
 
     [Unicode(false)]
     public string? Data { get; set; }
+
+    [ForeignKey("OperationsId")]
+    [InverseProperty("OperationsStage1s")]
+    public virtual ModelDbInitOperation? Operations { get; set; }
+
+    [ForeignKey("SubProductA")]
+    [InverseProperty("OperationsStage1s")]
+    public virtual SubProductum? SubProductANavigation { get; set; }
+
+    [ForeignKey("SubProductB")]
+    [InverseProperty("OperationsStage1s")]
+    public virtual SubProductB? SubProductBNavigation { get; set; }
+
+    [ForeignKey("SubProductC")]
+    [InverseProperty("OperationsStage1s")]
+    public virtual SubProductC? SubProductCNavigation { get; set; }
+
+    [ForeignKey("SubServiceA")]
+    [InverseProperty("OperationsStage1s")]
+    public virtual SubServiceA? SubServiceANavigation { get; set; }
+
+    [ForeignKey("SubServiceB")]
+    [InverseProperty("OperationsStage1s")]
+    public virtual SubServiceB? SubServiceBNavigation { get; set; }
+
+    [ForeignKey("SubServiceC")]
+    [InverseProperty("OperationsStage1s")]
+    public virtual SubServiceC? SubServiceCNavigation { get; set; }
 }

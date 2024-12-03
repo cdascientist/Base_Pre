@@ -953,8 +953,137 @@ namespace Base_Pre.Server.Controllers
                     }
                 }
 
-
             }
+
+            // First get the CustomerID from JIT memory
+            System.Diagnostics.Debug.WriteLine("Retrieving Customer ID from JIT Memory");
+            var CustomerId = (int)Jit_Memory_Object.GetProperty("CustomerId");
+            System.Diagnostics.Debug.WriteLine($"Retrieved CustomerId: {CustomerId}");
+
+            // Check if ClientOrder exists
+            System.Diagnostics.Debug.WriteLine($"Checking for existing Client_Order with CustomerId: {CustomerId}");
+            var existingOrder = await _context.ClientOrders
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.CustomerId == CustomerId);
+
+            ClientOrder orderRecord;
+            if (existingOrder == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"No existing Client_Order found for CustomerId: {CustomerId}. Creating new record.");
+                orderRecord = new ClientOrder
+                {
+                    CustomerId = CustomerId,
+                    OrderId = CustomerId
+                };
+                _context.ClientOrders.Add(orderRecord);
+                await _context.SaveChangesAsync();
+                System.Diagnostics.Debug.WriteLine($"Created new Client_Order record. Id: {orderRecord.Id}, OrderId: {orderRecord.OrderId}");
+            }
+            else
+            {
+                orderRecord = existingOrder;
+                System.Diagnostics.Debug.WriteLine($"Found existing Client_Order. Id: {orderRecord.Id}, OrderId: {orderRecord.OrderId}");
+            }
+
+            // Check if Operations record exists
+            System.Diagnostics.Debug.WriteLine($"Checking for existing Operations record with CustomerId: {CustomerId}");
+            var existingOperation = await _context.ModelDbInitOperations
+                .AsNoTracking()
+                .FirstOrDefaultAsync(o => o.CustomerId == CustomerId);
+
+            ModelDbInitOperation operationRecord;
+            if (existingOperation == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"Creating new Model_DB_Init_Operations record for CustomerId: {CustomerId}");
+                operationRecord = new ModelDbInitOperation
+                {
+                    CustomerId = CustomerId,
+                    OrderId = CustomerId,
+                    OperationsId = CustomerId,
+                    Data = null
+                };
+                _context.ModelDbInitOperations.Add(operationRecord);
+                await _context.SaveChangesAsync();
+                System.Diagnostics.Debug.WriteLine($"Created new Operations record. Id: {operationRecord.Id}");
+            }
+            else
+            {
+                operationRecord = existingOperation;
+                System.Diagnostics.Debug.WriteLine($"Found existing Operations record. Id: {operationRecord.Id}");
+            }
+
+            // Check if QA record exists
+            System.Diagnostics.Debug.WriteLine($"Checking for existing QA record with CustomerId: {CustomerId}");
+            var existingQa = await _context.ModelDbInitQas
+                .AsNoTracking()
+                .FirstOrDefaultAsync(q => q.CustomerId == CustomerId);
+
+            ModelDbInitQa qaRecord;
+            if (existingQa == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"Creating new Model_DB_Init_QA record for CustomerId: {CustomerId}");
+                qaRecord = new ModelDbInitQa
+                {
+                    CustomerId = CustomerId,
+                    OrderId = CustomerId,
+                    Data = null
+                };
+                _context.ModelDbInitQas.Add(qaRecord);
+                await _context.SaveChangesAsync();
+                System.Diagnostics.Debug.WriteLine($"Created new QA record. Id: {qaRecord.Id}");
+            }
+            else
+            {
+                qaRecord = existingQa;
+                System.Diagnostics.Debug.WriteLine($"Found existing QA record. Id: {qaRecord.Id}");
+            }
+
+            // Check if OperationsStage1 record exists
+            System.Diagnostics.Debug.WriteLine($"Checking for existing OperationsStage1 record with CustomerId: {CustomerId}");
+            var existingOperationsStage1 = await _context.OperationsStage1s
+                .AsNoTracking()
+                .FirstOrDefaultAsync(o => o.CustomerId == CustomerId);
+
+            OperationsStage1 operationsStage1Record;
+            if (existingOperationsStage1 == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"Creating new OperationsStage1 record for CustomerId: {CustomerId}");
+                operationsStage1Record = new OperationsStage1
+                {
+                    CustomerId = CustomerId,
+                    OrderId = CustomerId,
+                    OperationsId = CustomerId,
+                    OperationalId = CustomerId,
+                    CsrOpartationalId = CustomerId,
+                    SalesId = CustomerId,
+                    SubServiceA = null,
+                    SubServiceB = null,
+                    SubServiceC = null,
+                    SubProductA = null,
+                    SubProductB = null,
+                    SubProductC = null,
+                    Data = null
+                };
+
+                _context.OperationsStage1s.Add(operationsStage1Record);
+                await _context.SaveChangesAsync();
+                System.Diagnostics.Debug.WriteLine($"Created new OperationsStage1 record. Id: {operationsStage1Record.Id}");
+            }
+            else
+            {
+                operationsStage1Record = existingOperationsStage1;
+                System.Diagnostics.Debug.WriteLine($"Found existing OperationsStage1 record. Id: {operationsStage1Record.Id}");
+            }
+
+            // Store complete objects in JIT memory
+            System.Diagnostics.Debug.WriteLine("Storing complete records in JIT memory");
+            Jit_Memory_Object.AddProperty("ClientOrderRecord", orderRecord);
+            Jit_Memory_Object.AddProperty("OperationsRecord", operationRecord);
+            Jit_Memory_Object.AddProperty("QaRecord", qaRecord);
+            Jit_Memory_Object.AddProperty("OperationsStage1Record", operationsStage1Record);
+            System.Diagnostics.Debug.WriteLine("Records stored in JIT memory successfully");
+
+
         }
 
 
@@ -973,7 +1102,13 @@ namespace Base_Pre.Server.Controllers
             System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Setting CustomerId to {id}");
             model.CustomerId = id;
 
-            // Get and verify stored model information
+            // Retrieve Operations record and Data
+            System.Diagnostics.Debug.WriteLine("ProcessFactoryTwo: Retrieving Operations Record from JIT Memory");
+            var operationsRecord = Jit_Memory_Object.GetProperty("OperationsRecord") as ModelDbInitOperation;
+            var operationsData = operationsRecord?.Data;
+            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved Operations Data: {operationsData ?? "null"}");
+
+            // Rest of your existing code...
             var storedId = Jit_Memory_Object.GetProperty("Id");
             var storedCustomerId = Jit_Memory_Object.GetProperty("CustomerId");
             var storedData = Jit_Memory_Object.GetProperty("Data");
@@ -1009,6 +1144,19 @@ namespace Base_Pre.Server.Controllers
             System.Diagnostics.Debug.WriteLine("ProcessFactoryTwo: Adding Stage2Complete property");
             Jit_Memory_Object.AddProperty("Stage2Complete", true);
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         private void ProcessFactoryThree(ModelDbInit model, int id, string name, string productType, Jit_Memory_Object jitObject)
         {

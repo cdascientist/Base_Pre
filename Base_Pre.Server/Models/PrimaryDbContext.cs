@@ -91,10 +91,6 @@ public partial class PrimaryDbContext : DbContext
 
     public virtual DbSet<OperationsStage4> OperationsStage4s { get; set; }
 
-    public virtual DbSet<Product> Products { get; set; }
-
-    public virtual DbSet<Service> Services { get; set; }
-
     public virtual DbSet<SubProductB> SubProductBs { get; set; }
 
     public virtual DbSet<SubProductC> SubProductCs { get; set; }
@@ -381,6 +377,23 @@ public partial class PrimaryDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("pk_Operations_Stage_1");
 
             entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.HasOne(d => d.Operations).WithMany(p => p.OperationsStage1s)
+                .HasPrincipalKey(p => p.OperationsId)
+                .HasForeignKey(d => d.OperationsId)
+                .HasConstraintName("fk_operations_stage_1");
+
+            entity.HasOne(d => d.SubProductANavigation).WithMany(p => p.OperationsStage1s).HasConstraintName("stage_1_SubProductA");
+
+            entity.HasOne(d => d.SubProductBNavigation).WithMany(p => p.OperationsStage1s).HasConstraintName("stage_1_SubProductB");
+
+            entity.HasOne(d => d.SubProductCNavigation).WithMany(p => p.OperationsStage1s).HasConstraintName("stage_1_SubProductC");
+
+            entity.HasOne(d => d.SubServiceANavigation).WithMany(p => p.OperationsStage1s).HasConstraintName("stage_1_SubServiceA");
+
+            entity.HasOne(d => d.SubServiceBNavigation).WithMany(p => p.OperationsStage1s).HasConstraintName("stage_1_SubServiceB");
+
+            entity.HasOne(d => d.SubServiceCNavigation).WithMany(p => p.OperationsStage1s).HasConstraintName("stage_1_SubServiceC");
         });
 
         modelBuilder.Entity<OperationsStage2>(entity =>
@@ -400,20 +413,6 @@ public partial class PrimaryDbContext : DbContext
         modelBuilder.Entity<OperationsStage4>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("pk_Operations_Stage_4");
-
-            entity.Property(e => e.Id).ValueGeneratedNever();
-        });
-
-        modelBuilder.Entity<Product>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("pk_Product");
-
-            entity.Property(e => e.Id).ValueGeneratedNever();
-        });
-
-        modelBuilder.Entity<Service>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("pk_Service");
 
             entity.Property(e => e.Id).ValueGeneratedNever();
         });

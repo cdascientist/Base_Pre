@@ -27,4 +27,7 @@ public partial class SubProductC
     public decimal? Price { get; set; }
 
     public int? Quantity { get; set; }
+
+    [InverseProperty("SubProductCNavigation")]
+    public virtual ICollection<OperationsStage1> OperationsStage1s { get; set; } = new List<OperationsStage1>();
 }
