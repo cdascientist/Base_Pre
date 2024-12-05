@@ -322,212 +322,374 @@ namespace Base_Pre.Server.Controllers
             System.Diagnostics.Debug.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] Session {sessionId}: ProcessFactoryOneActive property value: {isActive}");
             System.Diagnostics.Debug.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] Session {sessionId}: Starting ProcessFactoryOne (Model C)");
 
-            /// <summary>
-            /// Step Six Retrieve the inital base model by CustomerID
-            /// </summary>
-            System.Diagnostics.Debug.WriteLine("Fetching Model from database");
-            var ML_Model = await _context.ModelDbInits
-                .AsNoTracking()
-                .FirstOrDefaultAsync(m => m.CustomerId == customerID);
-            System.Diagnostics.Debug.WriteLine($"Model fetch completed: {(ML_Model != null ? "Found" : "Not Found")}");
-
-            /// <summary>
-            /// Step Seven Lets Perform Actions if the model is not found or found
-            /// </summary>
-            if (ML_Model == null)
+            try
             {
-                /// <summary>
-                /// Step Eight Lets Data Prep with base reference from all products and services
-                /// </summary>
-                System.Diagnostics.Debug.WriteLine($"No existing model found for Customer with ID {customerID}. Initializing new model creation.");
+                // First ensure ModelDbInit exists
+                var ML_Model = await _context.ModelDbInits
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(m => m.CustomerId == customerID);
 
-                // Retrieve products and services from JIT memory
-                var allSubProducts = (List<dynamic>)Jit_Memory_Object.GetProperty("All_SubProducts");
-                var allSubServices = (List<dynamic>)Jit_Memory_Object.GetProperty("All_SubServices");
-
-                // Extract and combine names and prices (converting prices to float)
-                var allNames = allSubProducts.Select(p => p.ProductName)
-                    .Concat(allSubServices.Select(s => s.ServiceName))
-                    .ToArray();
-
-                var allPrices = allSubProducts.Select(p => (float)p.Price)
-                    .Concat(allSubServices.Select(s => (float)s.Price))
-                    .ToArray();
-
-                System.Diagnostics.Debug.WriteLine($"Total items for processing: {allNames.Length}");
-
-                await Task.Run(() =>
+                if (ML_Model == null)
                 {
-                    try
+
+                    // Get the maximum ID from the ModelDbInit table 
+                    var maxId = await _context.ModelDbInits
+                        .MaxAsync(m => (int?)m.Id) ?? 0;
+
+                    System.Diagnostics.Debug.WriteLine($"No existing model found for Customer with ID {customerID}. Initializing new model.");
+                    ML_Model = new ModelDbInit
                     {
-                        int epochs = 100;
-                        float learningRate = 0.0001f;
+                        CustomerId = customerID,
+                        ModelDbInitTimeStamp = DateTime.UtcNow,
+                        Id = maxId + 1, // Use next available ID
+                        ModelDbInitCatagoricalId = null, // Add missing required field
+                        ModelDbInitCatagoricalName = null, // Add missing required field
+                        ModelDbInitModelData = false // Add missing required field with default
+                    };
+                    _context.ModelDbInits.Add(ML_Model);
+                    await _context.SaveChangesAsync();
+                    var allSubProducts = (List<dynamic>)Jit_Memory_Object.GetProperty("All_SubProducts");
+                    var allSubServices = (List<dynamic>)Jit_Memory_Object.GetProperty("All_SubServices");
 
-                        tf.compat.v1.disable_eager_execution();
-                        var g = tf.Graph();
-                        using (var sess = tf.Session(g))
+                    var allNames = allSubProducts.Select(p => p.ProductName)
+                        .Concat(allSubServices.Select(s => s.ServiceName))
+                        .ToArray();
+
+                    var allPrices = allSubProducts.Select(p => (float)p.Price)
+                        .Concat(allSubServices.Select(s => (float)s.Price))
+                        .ToArray();
+
+                    System.Diagnostics.Debug.WriteLine($"Total items for processing: {allNames.Length}");
+
+                    await Task.Run(async () =>
+                    {
+                        try
                         {
-                            var x = tf.placeholder(tf.float32, shape: new[] { -1, allNames.Length + 1 }, name: "input");
-                            var y = tf.placeholder(tf.float32, shape: new[] { -1, 1 }, name: "output");
+                            int epochs = 100;
+                            float learningRate = 0.0001f;
 
-                            var W = tf.Variable(tf.random.normal(new[] { allNames.Length + 1, 1 }, mean: 0.0f, stddev: 0.01f), name: "weight");
-                            var b = tf.Variable(tf.zeros(new[] { 1 }), name: "bias");
-
-                            var predictions = tf.add(tf.matmul(x, W), b);
-                            var loss = tf.reduce_mean(tf.square(predictions - y)) * 0.5f;
-
-                            var optimizer = tf.train.GradientDescentOptimizer(learningRate);
-                            var trainOp = optimizer.minimize(loss);
-
-                            // Reshape price data for tensor - properly shaped 2D array
-                            var priceData = new float[allPrices.Length, 1];
-                            for (int i = 0; i < allPrices.Length; i++)
+                            tf.compat.v1.disable_eager_execution();
+                            var g = tf.Graph();
+                            using (var sess = tf.Session(g))
                             {
-                                priceData[i, 0] = allPrices[i];
-                            }
+                                var x = tf.placeholder(tf.float32, shape: new[] { -1, allNames.Length + 1 }, name: "input");
+                                var y = tf.placeholder(tf.float32, shape: new[] { -1, 1 }, name: "output");
 
-                            // Create one-hot encoding matrix
-                            var oneHotNames = new float[allNames.Length, allNames.Length];
-                            for (int i = 0; i < allNames.Length; i++)
-                            {
-                                oneHotNames[i, i] = 1.0f;
-                            }
+                                var W = tf.Variable(tf.random.normal(new[] { allNames.Length + 1, 1 }, mean: 0.0f, stddev: 0.01f), name: "weight");
+                                var b = tf.Variable(tf.zeros(new[] { 1 }), name: "bias");
 
-                            // Prepare input data with proper dimensions
-                            var inputData = new float[allNames.Length, allNames.Length + 1];
-                            for (int i = 0; i < allNames.Length; i++)
-                            {
-                                inputData[i, 0] = allPrices[i];
-                                for (int j = 0; j < allNames.Length; j++)
+                                var predictions = tf.add(tf.matmul(x, W), b);
+                                var loss = tf.reduce_mean(tf.square(predictions - y)) * 0.5f;
+
+                                var optimizer = tf.train.GradientDescentOptimizer(learningRate);
+                                var trainOp = optimizer.minimize(loss);
+
+                                var priceData = new float[allPrices.Length, 1];
+                                for (int i = 0; i < allPrices.Length; i++)
                                 {
-                                    inputData[i, j + 1] = oneHotNames[i, j];
-                                }
-                            }
-
-                            sess.run(tf.global_variables_initializer());
-
-                            System.Diagnostics.Debug.WriteLine("Model C - Data shapes:");
-                            System.Diagnostics.Debug.WriteLine($"Input data shape: {inputData.GetLength(0)} x {inputData.GetLength(1)}");
-                            System.Diagnostics.Debug.WriteLine($"Price data shape: {priceData.GetLength(0)} x {priceData.GetLength(1)}");
-                            System.Diagnostics.Debug.WriteLine($"One-hot encoding shape: {oneHotNames.GetLength(0)} x {oneHotNames.GetLength(1)}");
-
-                            System.Diagnostics.Debug.WriteLine($"Model C - Starting training with learning rate: {learningRate}");
-                            float previousLoss = float.MaxValue;
-                            int stableCount = 0;
-
-                            for (int epoch = 0; epoch < epochs; epoch++)
-                            {
-                                var feedDict = new Dictionary<Tensor, object>
-                       {
-                           { x, inputData },
-                           { y, priceData }
-                       };
-
-                                var feedItems = feedDict.Select(kv => new FeedItem(kv.Key, kv.Value)).ToArray();
-
-                                sess.run(trainOp, feedItems);
-                                var currentLoss = (float)sess.run(loss, feedItems);
-
-                                if (float.IsNaN(currentLoss) || float.IsInfinity(currentLoss))
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"Model C - Training diverged at epoch {epoch}. Stopping training.");
-                                    break;
+                                    priceData[i, 0] = allPrices[i];
                                 }
 
-                                if (Math.Abs(previousLoss - currentLoss) < 1e-6)
+                                var oneHotNames = new float[allNames.Length, allNames.Length];
+                                for (int i = 0; i < allNames.Length; i++)
                                 {
-                                    stableCount++;
-                                    if (stableCount > 5)
+                                    oneHotNames[i, i] = 1.0f;
+                                }
+
+                                var inputData = new float[allNames.Length, allNames.Length + 1];
+                                for (int i = 0; i < allNames.Length; i++)
+                                {
+                                    inputData[i, 0] = allPrices[i];
+                                    for (int j = 0; j < allNames.Length; j++)
                                     {
-                                        System.Diagnostics.Debug.WriteLine($"Model C - Training converged at epoch {epoch}");
-                                        break;
+                                        inputData[i, j + 1] = oneHotNames[i, j];
                                     }
                                 }
-                                else
-                                {
-                                    stableCount = 0;
-                                }
-                                previousLoss = currentLoss;
 
-                                if (epoch % 10 == 0)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"Model C - Epoch {epoch}, Loss: {currentLoss:E4}");
-                                }
-                            }
+                                sess.run(tf.global_variables_initializer());
 
-                            System.Diagnostics.Debug.WriteLine($"Model C - Training completed");
-                            System.Diagnostics.Debug.WriteLine($"Model C - Final loss: {previousLoss:E4}");
-                            /// <summary>
-                            /// Part 7 
-                            /// Save the Model to the in-Runtime memory     
-                            /// </summary>
-                            System.Diagnostics.Debug.WriteLine("Starting model serialization process");
-                            using (var memoryStream = new MemoryStream())
-                            using (var writer = new BinaryWriter(memoryStream))
+                                System.Diagnostics.Debug.WriteLine("Model C - Data shapes:");
+                                System.Diagnostics.Debug.WriteLine($"Input data shape: {inputData.GetLength(0)} x {inputData.GetLength(1)}");
+                                System.Diagnostics.Debug.WriteLine($"Price data shape: {priceData.GetLength(0)} x {priceData.GetLength(1)}");
+                                System.Diagnostics.Debug.WriteLine($"One-hot encoding shape: {oneHotNames.GetLength(0)} x {oneHotNames.GetLength(1)}");
+
+                                System.Diagnostics.Debug.WriteLine($"Model C - Starting training with learning rate: {learningRate}");
+                                float previousLoss = float.MaxValue;
+                                int stableCount = 0;
+
+                                for (int epoch = 0; epoch < epochs; epoch++)
+                                {
+                                    var feedDict = new Dictionary<Tensor, object>
                             {
-                                /// Write model weights - convert NDArray to float array
-                                var wNDArray = (NDArray)sess.run(W);
-                                var wData = wNDArray.ToArray<float>();
-                                writer.Write(wData.Length);
-                                foreach (var w in wData)
-                                {
-                                    writer.Write(w);
+                                { x, inputData },
+                                { y, priceData }
+                            };
+
+                                    var feedItems = feedDict.Select(kv => new FeedItem(kv.Key, kv.Value)).ToArray();
+
+                                    sess.run(trainOp, feedItems);
+                                    var currentLoss = (float)sess.run(loss, feedItems);
+
+                                    if (float.IsNaN(currentLoss) || float.IsInfinity(currentLoss))
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"Model C - Training diverged at epoch {epoch}. Stopping training.");
+                                        break;
+                                    }
+
+                                    if (Math.Abs(previousLoss - currentLoss) < 1e-6)
+                                    {
+                                        stableCount++;
+                                        if (stableCount > 5)
+                                        {
+                                            System.Diagnostics.Debug.WriteLine($"Model C - Training converged at epoch {epoch}");
+                                            break;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        stableCount = 0;
+                                    }
+                                    previousLoss = currentLoss;
+
+                                    if (epoch % 10 == 0)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"Model C - Epoch {epoch}, Loss: {currentLoss:E4}");
+                                    }
                                 }
-                                System.Diagnostics.Debug.WriteLine("Model weights serialized successfully");
 
-                                /// Write model bias - convert NDArray to float array
-                                var bNDArray = (NDArray)sess.run(b);
-                                var bData = bNDArray.ToArray<float>();
-                                writer.Write(bData.Length);
-                                foreach (var bias in bData)
+                                System.Diagnostics.Debug.WriteLine($"Model C - Training completed");
+                                System.Diagnostics.Debug.WriteLine($"Model C - Final loss: {previousLoss:E4}");
+
+                                System.Diagnostics.Debug.WriteLine("Starting model serialization process");
+                                using (var memoryStream = new MemoryStream())
+                                using (var writer = new BinaryWriter(memoryStream))
                                 {
-                                    writer.Write(bias);
+                                    var wNDArray = (NDArray)sess.run(W);
+                                    var wData = wNDArray.ToArray<float>();
+                                    writer.Write(wData.Length);
+                                    foreach (var w in wData)
+                                    {
+                                        writer.Write(w);
+                                    }
+                                    System.Diagnostics.Debug.WriteLine("Model weights serialized successfully");
+
+                                    var bNDArray = (NDArray)sess.run(b);
+                                    var bData = bNDArray.ToArray<float>();
+                                    writer.Write(bData.Length);
+                                    foreach (var bias in bData)
+                                    {
+                                        writer.Write(bias);
+                                    }
+                                    System.Diagnostics.Debug.WriteLine("Model bias serialized successfully");
+
+                                    ML_Model.Data = memoryStream.ToArray();
+                                    await _context.SaveChangesAsync();
+
+                                    Jit_Memory_Object.AddProperty("CustomerId", customerID);
+                                    Jit_Memory_Object.AddProperty("ProcessFactoryOne_Data", ML_Model.Data);
+                                    System.Diagnostics.Debug.WriteLine("Model data saved successfully");
+
+                                    var storedCustomerId = Jit_Memory_Object.GetProperty("CustomerId");
+                                    var storedModelData = Jit_Memory_Object.GetProperty("ProcessFactoryOne_Data") as byte[];
+                                    System.Diagnostics.Debug.WriteLine($"Verification - Customer ID: {storedCustomerId}");
+                                    System.Diagnostics.Debug.WriteLine($"Verification - Data Size: {storedModelData?.Length ?? 0} bytes");
                                 }
-                                System.Diagnostics.Debug.WriteLine("Model bias serialized successfully");
-
-                                /// Save to in-memory object as separate properties
-                                Jit_Memory_Object.AddProperty("CustomerId", customerID);
-                                Jit_Memory_Object.AddProperty("ProcessFactoryOne_Data", memoryStream.ToArray());
-                                System.Diagnostics.Debug.WriteLine("Model By Customer ID data saved to in-memory object successfully");
-
-                                /// Verify the stored model in Memory 
-                                var storedCustomerId = Jit_Memory_Object.GetProperty("CustomerId");
-                                var storedModelData = Jit_Memory_Object.GetProperty("ProcessFactoryOne_Data") as byte[];
-                                System.Diagnostics.Debug.WriteLine($"Verification - Customer ID: {storedCustomerId}");
-                                System.Diagnostics.Debug.WriteLine($"Verification - Data Size: {storedModelData?.Length ?? 0} bytes");
                             }
+
+                            // Create associated records after ModelDbInit exists
+                            var clientOrder = await _context.ClientOrders
+                                .AsNoTracking()
+                                .FirstOrDefaultAsync(c => c.CustomerId == customerID);
+
+                            if (clientOrder == null)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Creating new Client_Order record for CustomerId: {customerID}");
+                                clientOrder = new ClientOrder
+                                {
+                                    CustomerId = customerID,
+                                    OrderId = customerID
+                                };
+                                _context.ClientOrders.Add(clientOrder);
+                                await _context.SaveChangesAsync();
+                            }
+
+                            var operation = await _context.ModelDbInitOperations
+                                .AsNoTracking()
+                                .FirstOrDefaultAsync(o => o.CustomerId == customerID);
+
+                            if (operation == null)
+                            {
+                                operation = new ModelDbInitOperation
+                                {
+                                    CustomerId = customerID,
+                                    OrderId = customerID,
+                                    OperationsId = customerID,
+                                    Data = null
+                                };
+                                _context.ModelDbInitOperations.Add(operation);
+                                await _context.SaveChangesAsync();
+                            }
+
+                            var qa = await _context.ModelDbInitQas
+                                .AsNoTracking()
+                                .FirstOrDefaultAsync(q => q.CustomerId == customerID);
+
+                            if (qa == null)
+                            {
+                                qa = new ModelDbInitQa
+                                {
+                                    CustomerId = customerID,
+                                    OrderId = customerID,
+                                    Data = null
+                                };
+                                _context.ModelDbInitQas.Add(qa);
+                                await _context.SaveChangesAsync();
+                            }
+
+                            var operationsStage1 = await _context.OperationsStage1s
+                                .AsNoTracking()
+                                .FirstOrDefaultAsync(o => o.CustomerId == customerID);
+
+                            if (operationsStage1 == null)
+                            {
+                                operationsStage1 = new OperationsStage1
+                                {
+                                    CustomerId = customerID,
+                                    OrderId = customerID,
+                                    OperationsId = customerID,
+                                    OperationalId = customerID,
+                                    CsrOpartationalId = customerID,
+                                    SalesId = customerID,
+                                    SubServiceA = null,
+                                    SubServiceB = null,
+                                    SubServiceC = null,
+                                    SubProductA = null,
+                                    SubProductB = null,
+                                    SubProductC = null,
+                                    Data = null
+                                };
+                                _context.OperationsStage1s.Add(operationsStage1);
+                                await _context.SaveChangesAsync();
+                            }
+
+                            Jit_Memory_Object.AddProperty("ClientOrderRecord", clientOrder);
+                            Jit_Memory_Object.AddProperty("OperationsRecord", operation);
+                            Jit_Memory_Object.AddProperty("QaRecord", qa);
+                            Jit_Memory_Object.AddProperty("OperationsStage1Record", operationsStage1);
+
+                            System.Diagnostics.Debug.WriteLine($"Verification - ClientOrder ID: {clientOrder.Id}");
+                            System.Diagnostics.Debug.WriteLine($"Verification - Operations ID: {operation.Id}");
+                            System.Diagnostics.Debug.WriteLine($"Verification - QA ID: {qa.Id}");
+                            System.Diagnostics.Debug.WriteLine($"Verification - OperationsStage1 ID: {operationsStage1.Id}");
                         }
-                    }
-                    catch (Exception ex)
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error in Model C training: {ex.Message}");
+                            throw;
+                        }
+                    });
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] Existing model found for Customer ID {customerID}");
+
+                    Jit_Memory_Object.AddProperty("CustomerId", ML_Model.CustomerId);
+                    Jit_Memory_Object.AddProperty("ModelDbInitTimeStamp", ML_Model.ModelDbInitTimeStamp);
+                    Jit_Memory_Object.AddProperty("Id", ML_Model.Id);
+                    Jit_Memory_Object.AddProperty("ProcessFactoryOne_Data", ML_Model.Data);
+
+                    var clientOrder = await _context.ClientOrders
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(c => c.CustomerId == customerID);
+
+                    if (clientOrder == null)
                     {
-                        System.Diagnostics.Debug.WriteLine($"Error in Model C training: {ex.Message}");
-                        throw;
+                        clientOrder = new ClientOrder
+                        {
+                            CustomerId = customerID,
+                            OrderId = customerID
+                        };
+                        _context.ClientOrders.Add(clientOrder);
+                        await _context.SaveChangesAsync();
                     }
-                });
+
+                    var operation = await _context.ModelDbInitOperations
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(o => o.CustomerId == customerID);
+
+                    if (operation == null)
+                    {
+                        operation = new ModelDbInitOperation
+                        {
+                            CustomerId = customerID,
+                            OrderId = customerID,
+                            OperationsId = customerID,
+                            Data = null
+                        };
+                        _context.ModelDbInitOperations.Add(operation);
+                        await _context.SaveChangesAsync();
+                    }
+
+                    var qa = await _context.ModelDbInitQas
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(q => q.CustomerId == customerID);
+
+                    if (qa == null)
+                    {
+                        qa = new ModelDbInitQa
+                        {
+                            CustomerId = customerID,
+                            OrderId = customerID,
+                            Data = null
+                        };
+                        _context.ModelDbInitQas.Add(qa);
+                        await _context.SaveChangesAsync();
+                    }
+
+                    var operationsStage1 = await _context.OperationsStage1s
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(o => o.CustomerId == customerID);
+
+                    if (operationsStage1 == null)
+                    {
+                        operationsStage1 = new OperationsStage1
+                        {
+                            CustomerId = customerID,
+                            OrderId = customerID,
+                            OperationsId = customerID,
+                            OperationalId = customerID,
+                            CsrOpartationalId = customerID,
+                            SalesId = customerID,
+                            SubServiceA = null,
+                            SubServiceB = null,
+                            SubServiceC = null,
+                            SubProductA = null,
+                            SubProductB = null,
+                            SubProductC = null,
+                            Data = null
+                        };
+                        _context.OperationsStage1s.Add(operationsStage1);
+                        await _context.SaveChangesAsync();
+                    }
+
+                    Jit_Memory_Object.AddProperty("ClientOrderRecord", clientOrder);
+                    Jit_Memory_Object.AddProperty("OperationsRecord", operation);
+                    Jit_Memory_Object.AddProperty("QaRecord", qa);
+                    Jit_Memory_Object.AddProperty("OperationsStage1Record", operationsStage1);
+
+                    System.Diagnostics.Debug.WriteLine($"Verification - CustomerId: {customerID}");
+                    System.Diagnostics.Debug.WriteLine($"Verification - ClientOrder ID: {clientOrder.Id}");
+                    System.Diagnostics.Debug.WriteLine($"Verification - Operations ID: {operation.Id}");
+                    System.Diagnostics.Debug.WriteLine($"Verification - QA ID: {qa.Id}");
+                    System.Diagnostics.Debug.WriteLine($"Verification - OperationsStage1 ID: {operationsStage1.Id}");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] Existing model found for Customer ID {customerID}");
-                // Store model properties in JIT memory
-                Jit_Memory_Object.AddProperty("CustomerId", ML_Model.CustomerId);
-                Jit_Memory_Object.AddProperty("ModelDbInitTimeStamp", ML_Model.ModelDbInitTimeStamp);
-                Jit_Memory_Object.AddProperty("Id", ML_Model.Id);
-                Jit_Memory_Object.AddProperty("Data", ML_Model.Data);
-
-                // Verify stored properties
-                var storedCustomerId = Jit_Memory_Object.GetProperty("CustomerId");
-                var storedTimestamp = Jit_Memory_Object.GetProperty("ModelDbInitTimeStamp");
-                var storedId = Jit_Memory_Object.GetProperty("Id");
-                var storedData = Jit_Memory_Object.GetProperty("Data");
-
-                System.Diagnostics.Debug.WriteLine($"Verification - CustomerId: {storedCustomerId}");
-                System.Diagnostics.Debug.WriteLine($"Verification - Timestamp: {storedTimestamp}");
-                System.Diagnostics.Debug.WriteLine($"Verification - Id: {storedId}");
-                System.Diagnostics.Debug.WriteLine($"Verification - Data Size: {(storedData as byte[])?.Length ?? 0} bytes");
-
+                System.Diagnostics.Debug.WriteLine($"Error in database operations: {ex.Message}");
+                throw;
             }
         }
-
 
 
 
@@ -553,6 +715,118 @@ namespace Base_Pre.Server.Controllers
             bool isActive = (bool)Jit_Memory_Object.GetProperty("ProcessFactoryTwoActive");
             System.Diagnostics.Debug.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] Session {sessionId}: ProcessFactoryTwoActive property value: {isActive}");
             System.Diagnostics.Debug.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] Session {sessionId}: Starting ProcessFactoryTwo (Model A)");
+
+            System.Diagnostics.Debug.WriteLine("ProcessFactoryTwo: Retrieving OperationsStage1 Record from JIT Memory");
+            var storedCustomerId = Jit_Memory_Object.GetProperty("CustomerId");
+            var storedData = Jit_Memory_Object.GetProperty("ProcessFactoryOne_Data") as byte[];
+
+            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved stored ProcessFactoryOne_Data CustomerId: {storedCustomerId}");
+            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved stored ProcessFactoryOne_Data size: {storedData?.Length ?? 0} bytes");
+
+
+
+
+
+
+
+
+
+
+
+
+            var operationsStage1Record = Jit_Memory_Object.GetProperty("OperationsStage1Record") as OperationsStage1;
+            var stageSubProducts = new List<int?>();
+
+            if (operationsStage1Record != null)
+            {
+                System.Diagnostics.Debug.WriteLine("OperationsStage1Record Data:");
+                System.Diagnostics.Debug.WriteLine($"ID: {operationsStage1Record.Id}");
+                System.Diagnostics.Debug.WriteLine($"Order ID: {operationsStage1Record.OrderId}");
+                System.Diagnostics.Debug.WriteLine($"CSR Operational ID: {operationsStage1Record.CsrOpartationalId}");
+                System.Diagnostics.Debug.WriteLine($"Operational ID: {operationsStage1Record.OperationalId}");
+                System.Diagnostics.Debug.WriteLine($"Customer ID: {operationsStage1Record.CustomerId}");
+                System.Diagnostics.Debug.WriteLine($"Sales ID: {operationsStage1Record.SalesId}");
+                System.Diagnostics.Debug.WriteLine($"Operations ID: {operationsStage1Record.OperationsId}");
+                System.Diagnostics.Debug.WriteLine($"SubService A: {operationsStage1Record.SubServiceA}");
+                System.Diagnostics.Debug.WriteLine($"SubService B: {operationsStage1Record.SubServiceB}");
+                System.Diagnostics.Debug.WriteLine($"SubService C: {operationsStage1Record.SubServiceC}");
+                System.Diagnostics.Debug.WriteLine($"SubProduct A: {operationsStage1Record.SubProductA}");
+                System.Diagnostics.Debug.WriteLine($"SubProduct B: {operationsStage1Record.SubProductB}");
+                System.Diagnostics.Debug.WriteLine($"SubProduct C: {operationsStage1Record.SubProductC}");
+                System.Diagnostics.Debug.WriteLine($"Data: {operationsStage1Record.Data}");
+
+                if (operationsStage1Record.SubProductA.HasValue ||
+                    operationsStage1Record.SubProductB.HasValue ||
+                    operationsStage1Record.SubProductC.HasValue)
+                {
+                    stageSubProducts.Add(operationsStage1Record.SubProductA);
+                    stageSubProducts.Add(operationsStage1Record.SubProductB);
+                    stageSubProducts.Add(operationsStage1Record.SubProductC);
+                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Collected {stageSubProducts.Count} SubProduct IDs from OperationsStage1");
+                }
+
+                var allSubProducts = Jit_Memory_Object.GetProperty("All_SubProducts") as List<dynamic>;
+                var filteredProducts = allSubProducts?.Where(p => stageSubProducts.Contains((int)p.Id)).ToList();
+                System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Filtered products count: {filteredProducts?.Count ?? 0}");
+
+                if (filteredProducts != null && filteredProducts.Any())
+                {
+                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved All_SubProducts - Count: {filteredProducts.Count}");
+
+                    var combinedNames = new List<string>();
+                    var combinedPrices = new List<float>();
+
+                    try
+                    {
+                        foreach (dynamic product in filteredProducts)
+                        {
+                            if (product == null) continue;
+
+                            try
+                            {
+                                string productName = Convert.ToString(product.ProductName);
+                                float productPrice = Convert.ToSingle(product.Price) / 1000f;
+
+                                if (!string.IsNullOrEmpty(productName) && productPrice > 0)
+                                {
+                                    combinedNames.Add(productName);
+                                    combinedPrices.Add(productPrice);
+                                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Processed product - Name: {productName}, Price: {productPrice:F4}");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Error processing individual product: {ex.Message}");
+                                continue;
+                            }
+                        }
+
+                        System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Successfully processed {combinedNames.Count} products");
+
+                        Jit_Memory_Object.AddProperty("Combined_Names", combinedNames);
+                        Jit_Memory_Object.AddProperty("Combined_Prices", combinedPrices);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Error processing products: {ex.Message}");
+                        throw;
+                    }
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("OperationsStage1Record not found in JIT Memory");
+            }
+
+
+
+
+
+
+
+
+
+
 
             await Task.Run(() =>
             {
