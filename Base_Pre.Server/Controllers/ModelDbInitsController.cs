@@ -122,7 +122,8 @@ namespace Base_Pre.Server.Controllers
                             p.ProductName,
                             p.ProductType,
                             p.Quantity,
-                            Price = (float)p.Price
+                            Price = (float)p.Price,
+                            ccvc = (float)p.Ccvc
                         })
                         .ToListAsync();
                     All_SubProducts.AddRange(All_subproductsA);
@@ -726,34 +727,11 @@ namespace Base_Pre.Server.Controllers
 
 
 
-
-
-
-
-
-
-
-
             var operationsStage1Record = Jit_Memory_Object.GetProperty("OperationsStage1Record") as OperationsStage1;
             var stageSubProducts = new List<int?>();
 
             if (operationsStage1Record != null)
             {
-                System.Diagnostics.Debug.WriteLine("OperationsStage1Record Data:");
-                System.Diagnostics.Debug.WriteLine($"ID: {operationsStage1Record.Id}");
-                System.Diagnostics.Debug.WriteLine($"Order ID: {operationsStage1Record.OrderId}");
-                System.Diagnostics.Debug.WriteLine($"CSR Operational ID: {operationsStage1Record.CsrOpartationalId}");
-                System.Diagnostics.Debug.WriteLine($"Operational ID: {operationsStage1Record.OperationalId}");
-                System.Diagnostics.Debug.WriteLine($"Customer ID: {operationsStage1Record.CustomerId}");
-                System.Diagnostics.Debug.WriteLine($"Sales ID: {operationsStage1Record.SalesId}");
-                System.Diagnostics.Debug.WriteLine($"Operations ID: {operationsStage1Record.OperationsId}");
-                System.Diagnostics.Debug.WriteLine($"SubService A: {operationsStage1Record.SubServiceA}");
-                System.Diagnostics.Debug.WriteLine($"SubService B: {operationsStage1Record.SubServiceB}");
-                System.Diagnostics.Debug.WriteLine($"SubService C: {operationsStage1Record.SubServiceC}");
-                System.Diagnostics.Debug.WriteLine($"SubProduct A: {operationsStage1Record.SubProductA}");
-                System.Diagnostics.Debug.WriteLine($"SubProduct B: {operationsStage1Record.SubProductB}");
-                System.Diagnostics.Debug.WriteLine($"SubProduct C: {operationsStage1Record.SubProductC}");
-                System.Diagnostics.Debug.WriteLine($"Data: {operationsStage1Record.Data}");
 
                 if (operationsStage1Record.SubProductA.HasValue ||
                     operationsStage1Record.SubProductB.HasValue ||
@@ -768,50 +746,8 @@ namespace Base_Pre.Server.Controllers
                 var allSubProducts = Jit_Memory_Object.GetProperty("All_SubProducts") as List<dynamic>;
                 var filteredProducts = allSubProducts?.Where(p => stageSubProducts.Contains((int)p.Id)).ToList();
                 System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Filtered products count: {filteredProducts?.Count ?? 0}");
+                Jit_Memory_Object.AddProperty("FilteredProducts", filteredProducts);
 
-                if (filteredProducts != null && filteredProducts.Any())
-                {
-                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved All_SubProducts - Count: {filteredProducts.Count}");
-
-                    var combinedNames = new List<string>();
-                    var combinedPrices = new List<float>();
-
-                    try
-                    {
-                        foreach (dynamic product in filteredProducts)
-                        {
-                            if (product == null) continue;
-
-                            try
-                            {
-                                string productName = Convert.ToString(product.ProductName);
-                                float productPrice = Convert.ToSingle(product.Price) / 1000f;
-
-                                if (!string.IsNullOrEmpty(productName) && productPrice > 0)
-                                {
-                                    combinedNames.Add(productName);
-                                    combinedPrices.Add(productPrice);
-                                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Processed product - Name: {productName}, Price: {productPrice:F4}");
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Error processing individual product: {ex.Message}");
-                                continue;
-                            }
-                        }
-
-                        System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Successfully processed {combinedNames.Count} products");
-
-                        Jit_Memory_Object.AddProperty("Combined_Names", combinedNames);
-                        Jit_Memory_Object.AddProperty("Combined_Prices", combinedPrices);
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Error processing products: {ex.Message}");
-                        throw;
-                    }
-                }
             }
             else
             {
@@ -819,15 +755,16 @@ namespace Base_Pre.Server.Controllers
             }
 
 
+            System.Diagnostics.Debug.WriteLine("Phase One: Initializing Data Clustering Implementation");
+            var FilteredProducts = (List<dynamic>)Jit_Memory_Object.GetProperty("FilteredProducts");
+            System.Diagnostics.Debug.WriteLine($"Found {FilteredProducts.Count} for Data Clustering");
+
+            // Extract the ccvc values
+            System.Diagnostics.Debug.WriteLine("Extracting ccvc's for clustering");
+          
 
 
-
-
-
-
-
-
-
+            System.Diagnostics.Debug.WriteLine("Phase Two: Initializing Neural Network Implementation");
             await Task.Run(() =>
             {
                 try
@@ -953,13 +890,48 @@ namespace Base_Pre.Server.Controllers
 
 
 
+
+
+
+
+
+
+
+
+
+
+
         private async Task ProcessFactoryThree(ModelDbInit model, int id, string name, int customerID, int sessionId,
-            Session session, ConcurrentDictionary<string, object> results)
+     Session session, ConcurrentDictionary<string, object> results)
         {
             Jit_Memory_Object.AddProperty("ProcessFactoryThreeActive", true);
             bool isActive = (bool)Jit_Memory_Object.GetProperty("ProcessFactoryThreeActive");
             System.Diagnostics.Debug.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] Session {sessionId}: ProcessFactoryThreeActive property value: {isActive}");
             System.Diagnostics.Debug.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] Session {sessionId}: Starting ProcessFactoryThree (Model B)");
+
+            var operationsStage1Record = Jit_Memory_Object.GetProperty("OperationsStage1Record") as OperationsStage1;
+            var stageSubService = new List<int?>();
+
+            if (operationsStage1Record != null)
+            {
+                if (operationsStage1Record.SubServiceA.HasValue ||
+                    operationsStage1Record.SubServiceB.HasValue ||
+                    operationsStage1Record.SubServiceC.HasValue)
+                {
+                    stageSubService.Add(operationsStage1Record.SubServiceA);
+                    stageSubService.Add(operationsStage1Record.SubServiceB);
+                    stageSubService.Add(operationsStage1Record.SubServiceC);
+                    System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Collected {stageSubService.Count} Sub Service IDs from OperationsStage1");
+                }
+
+                var allSubServices = Jit_Memory_Object.GetProperty("All_SubServices") as List<dynamic>;
+                var filteredServices = allSubServices?.Where(p => stageSubService.Contains((int)p.Id)).ToList();
+                System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Filtered services count: {filteredServices?.Count ?? 0}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("OperationsStage1Record not found in JIT Memory");
+            }
 
             await Task.Run(() =>
             {

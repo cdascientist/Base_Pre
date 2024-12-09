@@ -28,6 +28,9 @@ public partial class SubProductC
 
     public int? Quantity { get; set; }
 
+    [Column("ccvc")]
+    public double? Ccvc { get; set; }
+
     [InverseProperty("SubProductCNavigation")]
     public virtual ICollection<OperationsStage1> OperationsStage1s { get; set; } = new List<OperationsStage1>();
 }

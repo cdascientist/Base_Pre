@@ -28,6 +28,9 @@ public partial class SubProductB
     [Column(TypeName = "money")]
     public decimal? Price { get; set; }
 
+    [Column("ccvc")]
+    public double? Ccvc { get; set; }
+
     [InverseProperty("SubProductBNavigation")]
     public virtual ICollection<OperationsStage1> OperationsStage1s { get; set; } = new List<OperationsStage1>();
 }
