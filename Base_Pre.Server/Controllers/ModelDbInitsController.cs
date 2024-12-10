@@ -118,114 +118,163 @@ namespace Base_Pre.Server.Controllers
             {
                 try
                 {
-                    /// <summary>
-                    /// Step Four Lets capture the data based upon the current DB context 
-                    /// </summary>
-                    System.Diagnostics.Debug.WriteLine("Fetching ALL SubProduct A data");
-                    var All_subproductsA = await _context.SubProductAs
-                        .AsNoTracking()
-                        .Select(p => new {
-                            p.Id,
-                            p.ProductName,
-                            p.ProductType,
-                            p.Quantity,
-                            Price = (float)p.Price,
-                            ccvc = (float)p.Ccvc
-                        })
-                        .ToListAsync();
-                    All_SubProducts.AddRange(All_subproductsA);
-                    System.Diagnostics.Debug.WriteLine($"Found {All_subproductsA.Count} SubProduct A ALL records");
+                    System.Diagnostics.Debug.WriteLine("Starting parallel data retrieval");
 
-                    System.Diagnostics.Debug.WriteLine("Fetching ALL SubProduct B data");
-                    var All_subproductsB = await _context.SubProductBs
-                        .AsNoTracking()
-                        .Select(p => new {
-                            p.Id,
-                            p.ProductName,
-                            p.ProductType,
-                            p.Quantity,
-                            Price = (float)p.Price,
-                            ccvc = (float)p.Ccvc
-                        })
-                        .ToListAsync();
-                    All_SubProducts.AddRange(All_subproductsB);
-                    System.Diagnostics.Debug.WriteLine($"Found {All_subproductsB.Count} SubProduct B ALL records");
+                    // Create options for new context instances
+                    var optionsBuilder = new DbContextOptionsBuilder<PrimaryDbContext>();
+                    optionsBuilder.UseSqlServer(_context.Database.GetConnectionString());
 
-                    System.Diagnostics.Debug.WriteLine("Fetching ALL SubProduct C data");
-                    var All_subproductsC = await _context.SubProductCs
-                        .AsNoTracking()
-                        .Select(p => new {
-                            p.Id,
-                            p.ProductName,
-                            p.ProductType,
-                            p.Quantity,
-                            Price = (float)p.Price,
-                            ccvc = (float)p.Ccvc
-                        })
-                        .ToListAsync();
-                    All_SubProducts.AddRange(All_subproductsC);
-                    System.Diagnostics.Debug.WriteLine($"Found {All_subproductsC.Count} SubProduct C ALL records");
+                    // Function to create a new context instance
+                    PrimaryDbContext CreateNewContext()
+                    {
+                        return new PrimaryDbContext(optionsBuilder.Options);
+                    }
 
-                    System.Diagnostics.Debug.WriteLine("Fetching ALL SubService A data");
-                    var All_subservicesA = await _context.SubServiceAs
-                        .AsNoTracking()
-                        .Select(p => new {
-                            p.Id,
-                            p.ServiceName,
-                            p.ServiceType,
-                            p.Quantity,
-                            Price = (float)p.Price
-                        })
-                        .ToListAsync();
-                    All_SubServices.AddRange(All_subservicesA);
-                    System.Diagnostics.Debug.WriteLine($"Found {All_subservicesA.Count} SubService A ALL records");
+                    // Create tasks with separate context instances for each query
+                    var tasks = new List<Task>();
 
-                    System.Diagnostics.Debug.WriteLine("Fetching ALL SubService B data");
-                    var All_subservicesB = await _context.SubServiceBs
-                        .AsNoTracking()
-                        .Select(p => new {
-                            p.Id,
-                            p.ServiceName,
-                            p.ServiceType,
-                            p.Quantity,
-                            Price = (float)p.Price
-                        })
-                        .ToListAsync();
-                    All_SubServices.AddRange(All_subservicesB);
-                    System.Diagnostics.Debug.WriteLine($"Found {All_subservicesB.Count} SubService B ALL records");
+                    // Product tasks
+                    var productTaskA = Task.Run(async () =>
+                    {
+                        using var context = CreateNewContext();
+                        return await context.SubProductAs
+                            .AsNoTracking()
+                            .Select(p => new {
+                                p.Id,
+                                p.ProductName,
+                                p.ProductType,
+                                p.Quantity,
+                                Price = (float)p.Price,
+                                ccvc = (float)p.Ccvc
+                            })
+                            .ToListAsync();
+                    });
+                    tasks.Add(productTaskA);
 
-                    System.Diagnostics.Debug.WriteLine("Fetching ALL SubService C data");
-                    var All_subservicesC = await _context.SubServiceCs
-                        .AsNoTracking()
-                        .Select(p => new {
-                            p.Id,
-                            p.ServiceName,
-                            p.ServiceType,
-                            p.Quantity,
-                            Price = (float)p.Price
-                        })
-                        .ToListAsync();
-                    All_SubServices.AddRange(All_subservicesC);
-                    System.Diagnostics.Debug.WriteLine($"Found {All_subservicesC.Count} SubService C ALL records");
+                    var productTaskB = Task.Run(async () =>
+                    {
+                        using var context = CreateNewContext();
+                        return await context.SubProductBs
+                            .AsNoTracking()
+                            .Select(p => new {
+                                p.Id,
+                                p.ProductName,
+                                p.ProductType,
+                                p.Quantity,
+                                Price = (float)p.Price,
+                                ccvc = (float)p.Ccvc
+                            })
+                            .ToListAsync();
+                    });
+                    tasks.Add(productTaskB);
 
+                    var productTaskC = Task.Run(async () =>
+                    {
+                        using var context = CreateNewContext();
+                        return await context.SubProductCs
+                            .AsNoTracking()
+                            .Select(p => new {
+                                p.Id,
+                                p.ProductName,
+                                p.ProductType,
+                                p.Quantity,
+                                Price = (float)p.Price,
+                                ccvc = (float)p.Ccvc
+                            })
+                            .ToListAsync();
+                    });
+                    tasks.Add(productTaskC);
 
-                    /// <summary>
-                    /// Step Five Lets Store in Runtim Memory
-                    /// </summary>
-                    /// <summary>
-                    /// Subsequent Usage:
-                    /// 5.3
-                    /// </summary>
+                    // Service tasks
+                    var serviceTaskA = Task.Run(async () =>
+                    {
+                        using var context = CreateNewContext();
+                        return await context.SubServiceAs
+                            .AsNoTracking()
+                            .Select(p => new {
+                                p.Id,
+                                p.ServiceName,
+                                p.ServiceType,
+                                p.Quantity,
+                                Price = (float)p.Price
+                            })
+                            .ToListAsync();
+                    });
+                    tasks.Add(serviceTaskA);
+
+                    var serviceTaskB = Task.Run(async () =>
+                    {
+                        using var context = CreateNewContext();
+                        return await context.SubServiceBs
+                            .AsNoTracking()
+                            .Select(p => new {
+                                p.Id,
+                                p.ServiceName,
+                                p.ServiceType,
+                                p.Quantity,
+                                Price = (float)p.Price
+                            })
+                            .ToListAsync();
+                    });
+                    tasks.Add(serviceTaskB);
+
+                    var serviceTaskC = Task.Run(async () =>
+                    {
+                        using var context = CreateNewContext();
+                        return await context.SubServiceCs
+                            .AsNoTracking()
+                            .Select(p => new {
+                                p.Id,
+                                p.ServiceName,
+                                p.ServiceType,
+                                p.Quantity,
+                                Price = (float)p.Price
+                            })
+                            .ToListAsync();
+                    });
+                    tasks.Add(serviceTaskC);
+
+                    // Execute all queries in parallel
+                    System.Diagnostics.Debug.WriteLine("Executing parallel queries");
+                    await Task.WhenAll(tasks);
+
+                    // Process product results
+                    var productsA = await productTaskA;
+                    var productsB = await productTaskB;
+                    var productsC = await productTaskC;
+
+                    All_SubProducts.AddRange(productsA);
+                    All_SubProducts.AddRange(productsB);
+                    All_SubProducts.AddRange(productsC);
+
+                    System.Diagnostics.Debug.WriteLine($"Found {productsA.Count} SubProduct A records");
+                    System.Diagnostics.Debug.WriteLine($"Found {productsB.Count} SubProduct B records");
+                    System.Diagnostics.Debug.WriteLine($"Found {productsC.Count} SubProduct C records");
+
+                    // Process service results
+                    var servicesA = await serviceTaskA;
+                    var servicesB = await serviceTaskB;
+                    var servicesC = await serviceTaskC;
+
+                    All_SubServices.AddRange(servicesA);
+                    All_SubServices.AddRange(servicesB);
+                    All_SubServices.AddRange(servicesC);
+
+                    System.Diagnostics.Debug.WriteLine($"Found {servicesA.Count} SubService A records");
+                    System.Diagnostics.Debug.WriteLine($"Found {servicesB.Count} SubService B records");
+                    System.Diagnostics.Debug.WriteLine($"Found {servicesC.Count} SubService C records");
+
+                    // Store in runtime memory
                     Jit_Memory_Object.AddProperty("All_SubServices", All_SubServices);
-                   Jit_Memory_Object.AddProperty("All_SubProducts", All_SubProducts);
+                    Jit_Memory_Object.AddProperty("All_SubProducts", All_SubProducts);
 
-                    // Add confirmation debug writes
+                    // Log final counts
                     System.Diagnostics.Debug.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] Stored All_SubServices in JIT memory with {All_SubServices.Count} total records");
                     System.Diagnostics.Debug.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] Stored All_SubProducts in JIT memory with {All_SubProducts.Count} total records");
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error fetching data: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Error in parallel data retrieval: {ex.Message}");
                     throw;
                 }
             }).GetAwaiter().GetResult();
@@ -418,178 +467,160 @@ namespace Base_Pre.Server.Controllers
 
 
 
-
-
                                             /// <summary>
                                             /// Subsequent Usage:
                                             /// 5.3
-                                            /// Up for definintion
+                                            /// Create variables to use ModelDbInit fields as input params
                                             /// </summary>
-                                            var allSubProducts = (List<dynamic>)Jit_Memory_Object.GetProperty("All_SubProducts");
-                                            var allSubServices = (List<dynamic>)Jit_Memory_Object.GetProperty("All_SubServices");
-
-
-
-                                            /// <summary>
-                                            /// Subsequent Usage:
-                                            /// 5.31 Data Basis
-                                            /// </summary>
-                                            var allNames = allSubProducts.Select(p => p.ProductName)
-                                                .Concat(allSubServices.Select(s => s.ServiceName))
-                                                .ToArray();
-
-                                            var allPrices = allSubProducts.Select(p => (float)p.Price)
-                                                .Concat(allSubServices.Select(s => (float)s.Price))
-                                                .ToArray();
-
-                                            System.Diagnostics.Debug.WriteLine($"Total items for processing: {allNames.Length}");
+                                            var modelId = ML_Model.Id;
+                                            var modelCustomerId = ML_Model.CustomerId;
+                                            var modelTimeStamp = ML_Model.ModelDbInitTimeStamp;
+                                            var modelCategoricalId = ML_Model.ModelDbInitCatagoricalId;
+                                            var modelCategoricalName = ML_Model.ModelDbInitCatagoricalName;
+                                            var modelData = ML_Model.ModelDbInitModelData;
 
 
 
 
-                                            /// <summary>
-                                            /// Subsequent Usage:
-                                            /// 5.32 Model Basis derrived from culative data set 
-                                            /// </summary>
-                                            await Task.Run(async () =>
-                                            {
-                                                try
-                                                {
 
-                                                    /// <summary>
-                                                    /// Subsequent Usage:
-                                                    /// 5.33 Struccture Training Architecture
-                                                    /// </summary>
-                                                    int epochs = 100;
-                                                    float learningRate = 0.0001f;
 
-                                                    tf.compat.v1.disable_eager_execution();
-                                                    var g = tf.Graph();
-                                                    using (var sess = tf.Session(g))
-                                                    {
-                                                        var x = tf.placeholder(tf.float32, shape: new[] { -1, allNames.Length + 1 }, name: "input");
-                                                        var y = tf.placeholder(tf.float32, shape: new[] { -1, 1 }, name: "output");
 
-                                                        var W = tf.Variable(tf.random.normal(new[] { allNames.Length + 1, 1 }, mean: 0.0f, stddev: 0.01f), name: "weight");
-                                                        var b = tf.Variable(tf.zeros(new[] { 1 }), name: "bias");
 
-                                                        var predictions = tf.add(tf.matmul(x, W), b);
-                                                        var loss = tf.reduce_mean(tf.square(predictions - y)) * 0.5f;
 
-                                                        var optimizer = tf.train.GradientDescentOptimizer(learningRate);
-                                                        var trainOp = optimizer.minimize(loss);
+                    /// <summary>
+                    /// Subsequent Usage:
+                    /// 5.32 Model Basis derived from ModelDbInit fields only
+                    /// </summary>
+                    await Task.Run(async () =>
+                    {
+                        try
+                        {
+                            /// <summary>
+                            /// Subsequent Usage:
+                            /// 5.33 Structure Training Architecture with ModelDbInit fields
+                            /// </summary>
+                            int epochs = 100;
+                            float learningRate = 0.0001f;
 
-                                                        var priceData = new float[allPrices.Length, 1];
-                                                        for (int i = 0; i < allPrices.Length; i++)
-                                                        {
-                                                            priceData[i, 0] = allPrices[i];
-                                                        }
+                            tf.compat.v1.disable_eager_execution();
+                            var g = tf.Graph();
+                            using (var sess = tf.Session(g))
+                            {
+                                // Define input shape based on number of ModelDbInit fields
+                                var numberOfFeatures = 6; // Number of ModelDbInit fields
+                                var x = tf.placeholder(tf.float32, shape: new[] { -1, numberOfFeatures }, name: "input");
+                                var y = tf.placeholder(tf.float32, shape: new[] { -1, 1 }, name: "output");
 
-                                                        var oneHotNames = new float[allNames.Length, allNames.Length];
-                                                        for (int i = 0; i < allNames.Length; i++)
-                                                        {
-                                                            oneHotNames[i, i] = 1.0f;
-                                                        }
+                                var W = tf.Variable(tf.random.normal(new[] { numberOfFeatures, 1 }, mean: 0.0f, stddev: 0.01f), name: "weight");
+                                var b = tf.Variable(tf.zeros(new[] { 1 }), name: "bias");
 
-                                                        var inputData = new float[allNames.Length, allNames.Length + 1];
-                                                        for (int i = 0; i < allNames.Length; i++)
-                                                        {
-                                                            inputData[i, 0] = allPrices[i];
-                                                            for (int j = 0; j < allNames.Length; j++)
-                                                            {
-                                                                inputData[i, j + 1] = oneHotNames[i, j];
-                                                            }
-                                                        }
+                                var predictions = tf.add(tf.matmul(x, W), b);
+                                var loss = tf.reduce_mean(tf.square(predictions - y)) * 0.5f;
 
-                                                        sess.run(tf.global_variables_initializer());
+                                var optimizer = tf.train.GradientDescentOptimizer(learningRate);
+                                var trainOp = optimizer.minimize(loss);
 
-                                                        System.Diagnostics.Debug.WriteLine("Model C - Data shapes:");
-                                                        System.Diagnostics.Debug.WriteLine($"Input data shape: {inputData.GetLength(0)} x {inputData.GetLength(1)}");
-                                                        System.Diagnostics.Debug.WriteLine($"Price data shape: {priceData.GetLength(0)} x {priceData.GetLength(1)}");
-                                                        System.Diagnostics.Debug.WriteLine($"One-hot encoding shape: {oneHotNames.GetLength(0)} x {oneHotNames.GetLength(1)}");
+                                // Create input array with single sample (current ModelDbInit values)
+                                var inputData = new float[1, numberOfFeatures];
+                                inputData[0, 0] = modelId;
+                                inputData[0, 1] = modelCustomerId.HasValue ? (float)modelCustomerId.Value : 0f; // Fixed nullable int conversion
+                                inputData[0, 2] = ((DateTimeOffset)modelTimeStamp).ToUnixTimeSeconds();
+                                inputData[0, 3] = modelCategoricalId.HasValue ? (float)modelCategoricalId.Value : 0f;
+                                inputData[0, 4] = modelCategoricalName != null ? 1f : 0f;
+                                inputData[0, 5] = modelData.HasValue ? (modelData.Value ? 1f : 0f) : 0f;
 
-                                                        System.Diagnostics.Debug.WriteLine($"Model C - Starting training with learning rate: {learningRate}");
-                                                        float previousLoss = float.MaxValue;
-                                                        int stableCount = 0;
+                                // Create target data (using modelId as example target - adjust as needed)
+                                var targetData = new float[1, 1];
+                                targetData[0, 0] = modelId; // Example target - adjust based on your needs
 
-                                                        for (int epoch = 0; epoch < epochs; epoch++)
-                                                        {
-                                                            var feedDict = new Dictionary<Tensor, object>
-                                                            {
-                                                        { x, inputData },
-                                                        { y, priceData }
-                                                             };
+                                sess.run(tf.global_variables_initializer());
 
-                                                            var feedItems = feedDict.Select(kv => new FeedItem(kv.Key, kv.Value)).ToArray();
+                                System.Diagnostics.Debug.WriteLine("Model C - Data shapes:");
+                                System.Diagnostics.Debug.WriteLine($"Input data shape: {inputData.GetLength(0)} x {inputData.GetLength(1)}");
+                                System.Diagnostics.Debug.WriteLine($"Target data shape: {targetData.GetLength(0)} x {targetData.GetLength(1)}");
 
-                                                            sess.run(trainOp, feedItems);
-                                                            var currentLoss = (float)sess.run(loss, feedItems);
+                                System.Diagnostics.Debug.WriteLine($"Model C - Starting training with learning rate: {learningRate}");
+                                float previousLoss = float.MaxValue;
+                                int stableCount = 0;
 
-                                                            if (float.IsNaN(currentLoss) || float.IsInfinity(currentLoss))
-                                                            {
-                                                                System.Diagnostics.Debug.WriteLine($"Model C - Training diverged at epoch {epoch}. Stopping training.");
-                                                                break;
-                                                            }
+                                for (int epoch = 0; epoch < epochs; epoch++)
+                                {
+                                    var feedDict = new Dictionary<Tensor, object>
+                                        {
+                                            { x, inputData },
+                                            { y, targetData }
+                                        };
 
-                                                            if (Math.Abs(previousLoss - currentLoss) < 1e-6)
-                                                            {
-                                                                stableCount++;
-                                                                if (stableCount > 5)
-                                                                {
-                                                                    System.Diagnostics.Debug.WriteLine($"Model C - Training converged at epoch {epoch}");
-                                                                    break;
-                                                                }
-                                                            }
-                                                            else
-                                                            {
-                                                                stableCount = 0;
-                                                            }
-                                                            previousLoss = currentLoss;
+                                    var feedItems = feedDict.Select(kv => new FeedItem(kv.Key, kv.Value)).ToArray();
 
-                                                            if (epoch % 10 == 0)
-                                                            {
-                                                                System.Diagnostics.Debug.WriteLine($"Model C - Epoch {epoch}, Loss: {currentLoss:E4}");
-                                                            }
-                                                        }
+                                    sess.run(trainOp, feedItems);
+                                    var currentLoss = (float)sess.run(loss, feedItems);
 
-                                                        System.Diagnostics.Debug.WriteLine($"Model C - Training completed");
-                                                        System.Diagnostics.Debug.WriteLine($"Model C - Final loss: {previousLoss:E4}");
+                                    if (float.IsNaN(currentLoss) || float.IsInfinity(currentLoss))
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"Model C - Training diverged at epoch {epoch}. Stopping training.");
+                                        break;
+                                    }
 
-                                                        System.Diagnostics.Debug.WriteLine("Starting model serialization process");
-                                                        using (var memoryStream = new MemoryStream())
-                                                        using (var writer = new BinaryWriter(memoryStream))
-                                                        {
-                                                            var wNDArray = (NDArray)sess.run(W);
-                                                            var wData = wNDArray.ToArray<float>();
-                                                            writer.Write(wData.Length);
-                                                            foreach (var w in wData)
-                                                            {
-                                                                writer.Write(w);
-                                                            }
-                                                            System.Diagnostics.Debug.WriteLine("Model weights serialized successfully");
+                                    if (Math.Abs(previousLoss - currentLoss) < 1e-6)
+                                    {
+                                        stableCount++;
+                                        if (stableCount > 5)
+                                        {
+                                            System.Diagnostics.Debug.WriteLine($"Model C - Training converged at epoch {epoch}");
+                                            break;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        stableCount = 0;
+                                    }
+                                    previousLoss = currentLoss;
 
-                                                            var bNDArray = (NDArray)sess.run(b);
-                                                            var bData = bNDArray.ToArray<float>();
-                                                            writer.Write(bData.Length);
-                                                            foreach (var bias in bData)
-                                                            {
-                                                                writer.Write(bias);
-                                                            }
-                                                            System.Diagnostics.Debug.WriteLine("Model bias serialized successfully");
+                                    if (epoch % 10 == 0)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"Model C - Epoch {epoch}, Loss: {currentLoss:E4}");
+                                    }
+                                }
 
-                                                            ML_Model.Data = memoryStream.ToArray();
-                                                            await _context.SaveChangesAsync();
+                                System.Diagnostics.Debug.WriteLine($"Model C - Training completed");
+                                System.Diagnostics.Debug.WriteLine($"Model C - Final loss: {previousLoss:E4}");
 
-                                                            Jit_Memory_Object.AddProperty("CustomerId", customerID);
-                                                            Jit_Memory_Object.AddProperty("ProcessFactoryOne_Data", ML_Model.Data);
-                                                            System.Diagnostics.Debug.WriteLine("Model data saved successfully");
+                                System.Diagnostics.Debug.WriteLine("Starting model serialization process");
+                                using (var memoryStream = new MemoryStream())
+                                using (var writer = new BinaryWriter(memoryStream))
+                                {
+                                    var wNDArray = (NDArray)sess.run(W);
+                                    var wData = wNDArray.ToArray<float>();
+                                    writer.Write(wData.Length);
+                                    foreach (var w in wData)
+                                    {
+                                        writer.Write(w);
+                                    }
+                                    System.Diagnostics.Debug.WriteLine("Model weights serialized successfully");
 
-                                                            var storedCustomerId = Jit_Memory_Object.GetProperty("CustomerId");
-                                                            var storedModelData = Jit_Memory_Object.GetProperty("ProcessFactoryOne_Data") as byte[];
-                                                            System.Diagnostics.Debug.WriteLine($"Verification - Customer ID: {storedCustomerId}");
-                                                            System.Diagnostics.Debug.WriteLine($"Verification - Data Size: {storedModelData?.Length ?? 0} bytes");
-                                                        }
-                                                    }
+                                    var bNDArray = (NDArray)sess.run(b);
+                                    var bData = bNDArray.ToArray<float>();
+                                    writer.Write(bData.Length);
+                                    foreach (var bias in bData)
+                                    {
+                                        writer.Write(bias);
+                                    }
+                                    System.Diagnostics.Debug.WriteLine("Model bias serialized successfully");
+
+                                    ML_Model.Data = memoryStream.ToArray();
+                                    await _context.SaveChangesAsync();
+
+                                    Jit_Memory_Object.AddProperty("CustomerId", customerID);
+                                    Jit_Memory_Object.AddProperty("ProcessFactoryOne_Data", ML_Model.Data);
+                                    System.Diagnostics.Debug.WriteLine("Model data saved successfully");
+
+                                    var storedCustomerId = Jit_Memory_Object.GetProperty("CustomerId");
+                                    var storedModelData = Jit_Memory_Object.GetProperty("ProcessFactoryOne_Data") as byte[];
+                                    System.Diagnostics.Debug.WriteLine($"Verification - Customer ID: {storedCustomerId}");
+                                    System.Diagnostics.Debug.WriteLine($"Verification - Data Size: {storedModelData?.Length ?? 0} bytes");
+                                }
+                            }
 
 
 
@@ -1029,16 +1060,28 @@ namespace Base_Pre.Server.Controllers
                 {
                     int epochs = 100;
                     float learningRate = 0.0001f;
-                    var uniqueNames = new List<string> { "name1", "name2", "name3" };
+
+                    // Get unique product names from filtered products
+                    var uniqueNames = FilteredProducts
+                        .Select(p => (string)p.ProductName)
+                        .Distinct()
+                        .ToList();
+
+                    // Get normalized price data
+                    var priceData = new float[FilteredProducts.Count, 1];
+                    for (int i = 0; i < FilteredProducts.Count; i++)
+                    {
+                        priceData[i, 0] = (float)FilteredProducts[i].Price / 1000f; // Normalize price
+                    }
 
                     tf.compat.v1.disable_eager_execution();
                     var g = tf.Graph();
                     using (var sess = tf.Session(g))
                     {
-                        var x = tf.placeholder(tf.float32, shape: new[] { -1, 4 }, name: "input");
+                        var x = tf.placeholder(tf.float32, shape: new[] { -1, uniqueNames.Count + 1 }, name: "input");
                         var y = tf.placeholder(tf.float32, shape: new[] { -1, 1 }, name: "output");
 
-                        var W = tf.Variable(tf.random.normal(new[] { 4, 1 }, mean: 0.0f, stddev: 0.01f), name: "weight");
+                        var W = tf.Variable(tf.random.normal(new[] { uniqueNames.Count + 1, 1 }, mean: 0.0f, stddev: 0.01f), name: "weight");
                         var b = tf.Variable(tf.zeros(new[] { 1 }), name: "bias");
 
                         var predictions = tf.add(tf.matmul(x, W), b);
@@ -1047,23 +1090,20 @@ namespace Base_Pre.Server.Controllers
                         var optimizer = tf.train.GradientDescentOptimizer(learningRate);
                         var trainOp = optimizer.minimize(loss);
 
-                        var priceData = new float[,] {
-                    { 100f/1000f },
-                    { 200f/1000f },
-                    { 300f/1000f }
-                };
-
-                        var oneHotNames = new float[3, 3];
-                        for (int i = 0; i < 3; i++)
+                        // Create one-hot encoding for product names
+                        var oneHotNames = new float[FilteredProducts.Count, uniqueNames.Count];
+                        for (int i = 0; i < FilteredProducts.Count; i++)
                         {
-                            oneHotNames[i, i] = 1.0f;
+                            var nameIndex = uniqueNames.IndexOf((string)FilteredProducts[i].ProductName);
+                            oneHotNames[i, nameIndex] = 1.0f;
                         }
 
-                        var inputData = new float[3, 4];
-                        for (int i = 0; i < 3; i++)
+                        // Combine price and one-hot encoded names for input
+                        var inputData = new float[FilteredProducts.Count, uniqueNames.Count + 1];
+                        for (int i = 0; i < FilteredProducts.Count; i++)
                         {
                             inputData[i, 0] = priceData[i, 0];
-                            for (int j = 0; j < 3; j++)
+                            for (int j = 0; j < uniqueNames.Count; j++)
                             {
                                 inputData[i, j + 1] = oneHotNames[i, j];
                             }
@@ -1072,8 +1112,9 @@ namespace Base_Pre.Server.Controllers
                         sess.run(tf.global_variables_initializer());
 
                         System.Diagnostics.Debug.WriteLine("Model A - Data shapes:");
-                        System.Diagnostics.Debug.WriteLine($"Input data shape: {string.Join(",", inputData.GetLength(0))} x {string.Join(",", inputData.GetLength(1))}");
-                        System.Diagnostics.Debug.WriteLine($"Price data shape: {string.Join(",", priceData.GetLength(0))} x {string.Join(",", priceData.GetLength(1))}");
+                        System.Diagnostics.Debug.WriteLine($"Input data shape: {inputData.GetLength(0)} x {inputData.GetLength(1)}");
+                        System.Diagnostics.Debug.WriteLine($"Price data shape: {priceData.GetLength(0)} x {priceData.GetLength(1)}");
+                        System.Diagnostics.Debug.WriteLine($"Number of unique products: {uniqueNames.Count}");
 
                         System.Diagnostics.Debug.WriteLine($"Model A - Starting training with learning rate: {learningRate}");
                         float previousLoss = float.MaxValue;
@@ -1082,10 +1123,10 @@ namespace Base_Pre.Server.Controllers
                         for (int epoch = 0; epoch < epochs; epoch++)
                         {
                             var feedDict = new Dictionary<Tensor, object>
-                    {
-                        { x, inputData },
-                        { y, priceData }
-                    };
+                            {
+                                { x, inputData },
+                                { y, priceData }
+                            };
 
                             var feedItems = feedDict.Select(kv => new FeedItem(kv.Key, kv.Value)).ToArray();
 
@@ -1128,6 +1169,9 @@ namespace Base_Pre.Server.Controllers
 
                         System.Diagnostics.Debug.WriteLine($"Model A - Training completed");
                         System.Diagnostics.Debug.WriteLine($"Model A - Final loss: {previousLoss:E4}");
+
+                        // Store product names for reference
+                        results.TryAdd("ProductNames", uniqueNames);
                     }
                 }
                 catch (Exception ex)
