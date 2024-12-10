@@ -18,6 +18,9 @@ using System.Dynamic;
 using System.Runtime.CompilerServices;
 using System.Reflection;
 using System.ComponentModel.DataAnnotations.Schema;
+using Accord.Math.Distances;
+using System.Diagnostics;
+using Tensorflow.Clustering;
 
 namespace Base_Pre.Server.Models
 {
@@ -137,7 +140,8 @@ namespace Base_Pre.Server.Controllers
                             p.ProductName,
                             p.ProductType,
                             p.Quantity,
-                            Price = (float)p.Price
+                            Price = (float)p.Price,
+                            ccvc = (float)p.Ccvc
                         })
                         .ToListAsync();
                     All_SubProducts.AddRange(All_subproductsB);
@@ -151,7 +155,8 @@ namespace Base_Pre.Server.Controllers
                             p.ProductName,
                             p.ProductType,
                             p.Quantity,
-                            Price = (float)p.Price
+                            Price = (float)p.Price,
+                            ccvc = (float)p.Ccvc
                         })
                         .ToListAsync();
                     All_SubProducts.AddRange(All_subproductsC);
@@ -710,7 +715,7 @@ namespace Base_Pre.Server.Controllers
 
 
         private async Task ProcessFactoryTwo(ModelDbInit model, int id, string name, int customerID, int sessionId,
-      Session session, ConcurrentDictionary<string, object> results)
+     Session session, ConcurrentDictionary<string, object> results)
         {
             Jit_Memory_Object.AddProperty("ProcessFactoryTwoActive", true);
             bool isActive = (bool)Jit_Memory_Object.GetProperty("ProcessFactoryTwoActive");
@@ -724,15 +729,11 @@ namespace Base_Pre.Server.Controllers
             System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved stored ProcessFactoryOne_Data CustomerId: {storedCustomerId}");
             System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved stored ProcessFactoryOne_Data size: {storedData?.Length ?? 0} bytes");
 
-
-
-
             var operationsStage1Record = Jit_Memory_Object.GetProperty("OperationsStage1Record") as OperationsStage1;
             var stageSubProducts = new List<int?>();
 
             if (operationsStage1Record != null)
             {
-
                 if (operationsStage1Record.SubProductA.HasValue ||
                     operationsStage1Record.SubProductB.HasValue ||
                     operationsStage1Record.SubProductC.HasValue)
@@ -747,13 +748,11 @@ namespace Base_Pre.Server.Controllers
                 var filteredProducts = allSubProducts?.Where(p => stageSubProducts.Contains((int)p.Id)).ToList();
                 System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Filtered products count: {filteredProducts?.Count ?? 0}");
                 Jit_Memory_Object.AddProperty("FilteredProducts", filteredProducts);
-
             }
             else
             {
                 System.Diagnostics.Debug.WriteLine("OperationsStage1Record not found in JIT Memory");
             }
-
 
             System.Diagnostics.Debug.WriteLine("Phase One: Initializing Data Clustering Implementation");
             var FilteredProducts = (List<dynamic>)Jit_Memory_Object.GetProperty("FilteredProducts");
@@ -761,8 +760,96 @@ namespace Base_Pre.Server.Controllers
 
             // Extract the ccvc values
             System.Diagnostics.Debug.WriteLine("Extracting ccvc's for clustering");
-          
+            foreach (dynamic product in FilteredProducts)
+            {
+                System.Diagnostics.Debug.WriteLine($"Product Data:");
+                System.Diagnostics.Debug.WriteLine($"ID: {product.Id}");
+                System.Diagnostics.Debug.WriteLine($"Product Name: {product.ProductName}");
+                System.Diagnostics.Debug.WriteLine($"Product Type: {product.ProductType}");
+                System.Diagnostics.Debug.WriteLine($"Quantity: {product.Quantity}");
+                System.Diagnostics.Debug.WriteLine($"Price: {product.Price}");
+                System.Diagnostics.Debug.WriteLine($"CCVC: {product.ccvc}");
+                System.Diagnostics.Debug.WriteLine("-------------------");
+            }
 
+            // Create array of CCVC values with explicit type conversion
+            var ccvcList = new List<double[]>();
+            var ccvcValues = new List<double>();  // For median calculation
+            foreach (dynamic product in FilteredProducts)
+            {
+                double ccvcValue = Convert.ToDouble(product.ccvc);
+                ccvcList.Add(new double[] { ccvcValue });
+                ccvcValues.Add(ccvcValue);
+            }
+            double[][] ccvcArray = ccvcList.ToArray();
+
+            // Calculate median of all CCVC values
+            var sortedCcvc = ccvcValues.OrderBy(v => v).ToList();
+            double medianCcvc = sortedCcvc.Count % 2 == 0
+                ? (sortedCcvc[sortedCcvc.Count / 2 - 1] + sortedCcvc[sortedCcvc.Count / 2]) / 2
+                : sortedCcvc[sortedCcvc.Count / 2];
+
+            System.Diagnostics.Debug.WriteLine($"Median CCVC value: {medianCcvc:F4}");
+
+            // Define clustering parameters based on median
+            int numClusters = 3;
+            int numIterations = 100;
+
+            System.Diagnostics.Debug.WriteLine($"Clustering parameters: clusters={numClusters}, iterations={numIterations}");
+
+            // Create k-means algorithm with initialized centroids
+            var kmeans_ModelA = new Accord.MachineLearning.KMeans(numClusters)
+            {
+                MaxIterations = numIterations,
+                Distance = new SquareEuclidean()
+            };
+
+            // Compute the algorithm
+            System.Diagnostics.Debug.WriteLine("Starting k-means clustering");
+            var clusters = kmeans_ModelA.Learn(ccvcArray);
+
+            // Store clustering results with median information
+            Jit_Memory_Object.AddProperty("ModelA_Clusters", clusters);
+            Jit_Memory_Object.AddProperty("ModelA_ClusterCenters", kmeans_ModelA.Centroids);
+
+            // Calculate median from centroids
+            var modelACentroids = kmeans_ModelA.Centroids;
+            System.Diagnostics.Debug.WriteLine("\nProcessing Model A centroids in 3D space:");
+
+            var centroidValues = modelACentroids.Select(c => c[0]).OrderBy(v => v).ToList();
+
+            // Get individual centroids
+            double centroid1 = centroidValues[0];
+            double centroid2 = centroidValues[1];
+            double centroid3 = centroidValues[2];
+
+            System.Diagnostics.Debug.WriteLine("\nProcessing Model A Median Vector:");
+
+            // Use individual centroids for coordinates
+            double x = centroid1;
+            double y = centroid2;
+            double z = centroid3;
+
+            // Create the vector
+            double[] vector = { x, y, z };
+
+            // Calculate the magnitude
+            double magnitude = Math.Sqrt(x * x + y * y + z * z);
+
+            // Calculate normalized vector components
+            double nx = (magnitude > 0) ? x / magnitude : 0;
+            double ny = (magnitude > 0) ? y / magnitude : 0;
+            double nz = (magnitude > 0) ? z / magnitude : 0;
+
+            System.Diagnostics.Debug.WriteLine($"Individual Centroid Values: {centroid1:F4}, {centroid2:F4}, {centroid3:F4}");
+            System.Diagnostics.Debug.WriteLine($"Vector Coordinates: X={x:F4}, Y={y:F4}, Z={z:F4}");
+            System.Diagnostics.Debug.WriteLine($"Vector Magnitude: {magnitude:F4}");
+            System.Diagnostics.Debug.WriteLine($"Normalized Vector: nx={nx:F4}, ny={ny:F4}, nz={nz:F4}");
+
+            // Store the vector data
+            Jit_Memory_Object.AddProperty("ModelA_MedianVector", vector);
+            Jit_Memory_Object.AddProperty("ModelA_MedianVector_Normalized", new double[] { nx, ny, nz });
+            Jit_Memory_Object.AddProperty("ModelA_MedianMagnitude", magnitude);
 
             System.Diagnostics.Debug.WriteLine("Phase Two: Initializing Neural Network Implementation");
             await Task.Run(() =>
@@ -879,11 +966,6 @@ namespace Base_Pre.Server.Controllers
                 }
             });
         }
-
-
-
-
-
 
 
 
