@@ -287,7 +287,46 @@ namespace Base_Pre.Server.Controllers
 
 
 
-      
+
+
+
+        [HttpPost("GetCustomers/")]
+        public async Task<ActionResult<IEnumerable<ClientInformation>>> GetCustomers()
+        {
+            try
+            {
+                var clients = await _context.ClientInformations
+                    .AsNoTracking()
+                    .Select(c => new
+                    {
+                        c.Id,
+                        c.ClientFirstName,
+                        c.ClientLastName,
+                        c.CleintPhone,
+                        c.ClientAddress,
+                        c.CustomerId,
+                        c.CompanyName
+                    })
+                    .ToListAsync();
+
+                System.Diagnostics.Debug.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] Retrieved {clients.Count} client records");
+
+                if (!clients.Any())
+                {
+                    return NotFound("No client information records found");
+                }
+
+                return Ok(clients);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] Error retrieving client information: {ex.Message}");
+                return StatusCode(500, "Internal server error while retrieving client information");
+            }
+        }
+
+
+
 
 
 
@@ -1062,11 +1101,49 @@ namespace Base_Pre.Server.Controllers
             Jit_Memory_Object.AddProperty("ModelA_MedianVector_Normalized", new double[] { nx, ny, nz });
             Jit_Memory_Object.AddProperty("ModelA_MedianMagnitude", magnitude);
 
-            
-            
-            
-            
-            
+
+            // Store vector data in database
+            var vectorString = $"X={x:F4}, Y={y:F4}, Z={z:F4}, Magnitude={magnitude:F4}, NX={nx:F4}, NY={ny:F4}, NZ={nz:F4}";
+
+            try
+            {
+                // Get CustomerId from JIT Memory
+                var customerId = (int)Jit_Memory_Object.GetProperty("CustomerId");
+
+                // Update OperationsStage1
+                var operationsStage1 = await _context.OperationsStage1s
+                    .FirstOrDefaultAsync(o => o.CustomerId == customerId);
+
+                if (operationsStage1 != null)
+                {
+                    operationsStage1.OperationsStageOneProductVector = vectorString;
+                    _context.OperationsStage1s.Update(operationsStage1);
+                    System.Diagnostics.Debug.WriteLine($"Updated OperationsStage1 vector data for CustomerId: {customerId}");
+                }
+
+                // Update ModelDbInit
+                var modelDbInit = await _context.ModelDbInits
+                    .FirstOrDefaultAsync(m => m.CustomerId == customerId);
+
+                if (modelDbInit != null)
+                {
+                    modelDbInit.ModelDbInitProductVector = vectorString;
+                    _context.ModelDbInits.Update(modelDbInit);
+                    System.Diagnostics.Debug.WriteLine($"Updated ModelDbInit vector data for CustomerId: {customerId}");
+                }
+
+                // Save changes to database
+                await _context.SaveChangesAsync();
+                System.Diagnostics.Debug.WriteLine("Successfully saved vector data to database");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error saving vector data to database: {ex.Message}");
+                throw;
+            }
+
+
+
             System.Diagnostics.Debug.WriteLine("Phase Two: Initializing Neural Network Implementation");
             await Task.Run(() =>
             {
@@ -1418,6 +1495,51 @@ namespace Base_Pre.Server.Controllers
             Jit_Memory_Object.AddProperty("ModelB_MedianVector", vector);
             Jit_Memory_Object.AddProperty("ModelB_MedianVector_Normalized", new double[] { nx, ny, nz });
             Jit_Memory_Object.AddProperty("ModelB_MedianMagnitude", magnitude);
+
+
+            // Store service vector data in database
+            var serviceVectorString = $"X={x:F4}, Y={y:F4}, Z={z:F4}, Magnitude={magnitude:F4}, NX={nx:F4}, NY={ny:F4}, NZ={nz:F4}";
+
+            try
+            {
+                // Get CustomerId from JIT Memory
+                var customerId = (int)Jit_Memory_Object.GetProperty("CustomerId");
+
+                // Update OperationsStage1
+                var operationsStage1 = await _context.OperationsStage1s
+                    .FirstOrDefaultAsync(o => o.CustomerId == customerId);
+
+                if (operationsStage1 != null)
+                {
+                    operationsStage1.OperationsStageOneServiceVector = serviceVectorString;
+                    _context.OperationsStage1s.Update(operationsStage1);
+                    System.Diagnostics.Debug.WriteLine($"Updated OperationsStage1 service vector data for CustomerId: {customerId}");
+                }
+
+                // Update ModelDbInit
+                var modelDbInit = await _context.ModelDbInits
+                    .FirstOrDefaultAsync(m => m.CustomerId == customerId);
+
+                if (modelDbInit != null)
+                {
+                    modelDbInit.ModelDbInitServiceVector = serviceVectorString;
+                    _context.ModelDbInits.Update(modelDbInit);
+                    System.Diagnostics.Debug.WriteLine($"Updated ModelDbInit service vector data for CustomerId: {customerId}");
+                }
+
+                // Save changes to database
+                await _context.SaveChangesAsync();
+                System.Diagnostics.Debug.WriteLine("Successfully saved service vector data to database");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error saving service vector data to database: {ex.Message}");
+                throw;
+            }
+
+
+
+
 
             System.Diagnostics.Debug.WriteLine("Phase Two: Initializing Neural Network Implementation");
             await Task.Run(() =>

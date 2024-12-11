@@ -37,6 +37,11 @@ public partial class ClientInformation
     [Column("Customer_ID")]
     public int? CustomerId { get; set; }
 
+    [Column("Company_Name")]
+    [StringLength(100)]
+    [Unicode(false)]
+    public string? CompanyName { get; set; }
+
     [ForeignKey("CustomerId")]
     [InverseProperty("ClientInformation")]
     public virtual ModelDbInit? Customer { get; set; }

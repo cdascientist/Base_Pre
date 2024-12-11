@@ -1,169 +1,114 @@
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 
-const ProductDisplay = () => {
-    const [allProducts, setAllProducts] = useState([]);
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const [containers, setContainers] = useState({
-        body: null,
-        title: null
-    });
+export default function App() {
+    const [companies, setCompanies] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const bodyContainer = document.querySelector('.callout.right .body');
-        const titleContainer = document.querySelector('.callout.right .title');
-
-        if (bodyContainer && titleContainer) {
-            setContainers({
-                body: bodyContainer,
-                title: titleContainer
-            });
-        }
-
-        // Fetch data from API
-        fetch('http://localhost:5000/api/ModelDbInits/Machine_Learning_Implementation_One/GetAllProducts')
+        fetch('http://localhost:5000/api/ModelDbInits/GetCustomers', {
+            method: 'POST'
+        })
             .then(response => response.json())
             .then(data => {
-                setAllProducts(data);
+                console.log('Data received:', data);
+                setCompanies(data);
+                setLoading(false);
             })
-            .catch(error => console.error('Error fetching products:', error));
+            .catch(err => {
+                console.error('Error:', err);
+                setLoading(false);
+            });
     }, []);
 
-    const handlePrevious = () => {
-        setCurrentIndex(prevIndex => (
-            prevIndex > 0 ? prevIndex - 1 : allProducts.length - 1
-        ));
-    };
-
-    const handleNext = () => {
-        setCurrentIndex(prevIndex => (
-            prevIndex < allProducts.length - 1 ? prevIndex + 1 : 0
-        ));
-    };
-
-    if (!allProducts.length || !containers.body || !containers.title) {
-        return null;
+    if (loading) {
+        return (
+            <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                color: '#57b3c0',
+                fontSize: '24px',
+                letterSpacing: '4px',
+                textShadow: '0 0 10px rgba(87, 179, 192, 0.5)'
+            }}>
+                LOADING...
+            </div>
+        );
     }
 
-    const currentProduct = allProducts[currentIndex];
-
-    const buttonStyle = {
-        color: '#57b3c0',
-        padding: '8px 12px',
-        margin: '2px 0',
-        border: '1px solid rgba(87,179,192,0.2)',
-        cursor: 'pointer',
-        transition: 'all 0.3s ease',
-        fontSize: '0.9em',
-        letterSpacing: '1px',
-        background: 'rgba(87,179,192,0.1)',
-        textAlign: 'left',
-        borderRadius: '4px',
-        pointerEvents: 'auto'
-    };
-
-    const NavigationButtons = () => (
-        <div className="flex items-center gap-2" style={{
-            pointerEvents: 'auto',
-            position: 'relative',
-            zIndex: 1000,
-            padding: '0 20px'
-        }}>
-            <button
-                type="button"
-                onClick={handlePrevious}
-                style={{
-                    ...buttonStyle,
-                    ':hover': {
-                        background: 'rgba(87,179,192,0.2)',
-                        transform: 'translateX(5px)'
-                    }
-                }}
-                className="hover:bg-[rgba(87,179,192,0.2)] hover:translate-x-1 active:bg-[rgba(87,179,192,0.3)] active:border-[rgba(87,179,192,0.4)] active:shadow-[0_0_15px_rgba(87,179,192,0.2)]"
-            >
-                Prev
-            </button>
-            <button
-                type="button"
-                onClick={handleNext}
-                style={{
-                    ...buttonStyle,
-                    ':hover': {
-                        background: 'rgba(87,179,192,0.2)',
-                        transform: 'translateX(5px)'
-                    }
-                }}
-                className="hover:bg-[rgba(87,179,192,0.2)] hover:translate-x-1 active:bg-[rgba(87,179,192,0.3)] active:border-[rgba(87,179,192,0.4)] active:shadow-[0_0_15px_rgba(87,179,192,0.2)]"
-            >
-                Next
-            </button>
-        </div>
-    );
-
-    const ProductFields = () => (
+    return (
         <div style={{
-            position: 'relative',
-            padding: '0 10px',
-            overflowY: 'auto',
-            pointerEvents: 'auto',
-            maxWidth: '200px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '30px'
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%'
         }}>
-            {/* Prominent Product Name Display */}
+            {/* Title */}
             <div style={{
-                padding: '12px',
-                backgroundColor: 'rgba(87,179,192,0.1)',
-                borderRadius: '4px',
-                textAlign: 'center',
+                position: 'absolute',
+                top: '5%',
+                left: '50%',
+                transform: 'translateX(-50%)',
                 color: '#57b3c0',
-                fontSize: '1.2em',
-                fontWeight: 'bold',
-                border: '1px solid rgba(87,179,192,0.2)',
-                marginTop: '-10px'
+                fontSize: '20px',
+                letterSpacing: '4px',
+                whiteSpace: 'nowrap',
+                fontWeight: '400',
+                textShadow: '0 0 10px rgba(87, 179, 192, 0.5)'
             }}>
-                {currentProduct.productName}
+                COMPANY DIRECTORY
             </div>
 
-            {/* Other Product Details */}
-            <ul className="list-none p-0 m-0 space-y-2">
-                {[
-                    { label: 'Source', value: currentProduct.source },
-                    { label: 'ID', value: currentProduct.id },
-                    { label: 'Type', value: currentProduct.productType },
-                    { label: 'Price', value: `$${currentProduct.price.toFixed(2)}` },
-                    { label: 'Quantity', value: currentProduct.quantity }
-                ].map(({ label, value }) => (
-                    <li key={label} style={{
-                        padding: '8px',
-                        margin: '5px 0',
-                        borderBottom: '1px solid rgba(87,179,192,0.1)',
-                        transition: 'all 0.3s ease',
-                        color: '#a7d3d8',
-                        fontSize: '0.9em',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                    }}>
-                        <strong>{label}:</strong> {value}
-                    </li>
+            {/* Records Container */}
+            <div style={{
+                position: 'absolute',
+                top: '15%',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '380px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '15px',
+                maxHeight: '70%',
+                overflowY: 'auto',
+                padding: '20px 0'
+            }}>
+                {companies && companies.map((company, index) => (
+                    <div
+                        key={company.id || index}
+                        style={{
+                            padding: '20px',
+                            border: '2px solid #57b3c0',
+                            backgroundColor: 'rgba(87, 179, 192, 0.1)',
+                            color: '#57b3c0',
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            letterSpacing: '3px',
+                            fontSize: '18px',
+                            fontWeight: '500',
+                            textTransform: 'uppercase',
+                            textShadow: '0 0 10px rgba(87, 179, 192, 0.5)',
+                            transition: 'all 0.3s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgba(87, 179, 192, 0.2)';
+                            e.currentTarget.style.borderColor = '#d87930';
+                            e.currentTarget.style.boxShadow = '0 0 20px rgba(87, 179, 192, 0.3)';
+                            e.currentTarget.style.transform = 'translateX(10px)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgba(87, 179, 192, 0.1)';
+                            e.currentTarget.style.borderColor = '#57b3c0';
+                            e.currentTarget.style.boxShadow = 'none';
+                            e.currentTarget.style.transform = 'translateX(0)';
+                        }}
+                    >
+                        {company.companyName || 'UNNAMED'}
+                    </div>
                 ))}
-            </ul>
+            </div>
         </div>
     );
-
-    return (
-        <>
-            {createPortal(
-                <div style={{ pointerEvents: 'auto', position: 'relative', zIndex: 1000 }}>
-                    <NavigationButtons />
-                </div>,
-                containers.title
-            )}
-            {createPortal(<ProductFields />, containers.body)}
-        </>
-    );
-};
-
-export default ProductDisplay;
+}

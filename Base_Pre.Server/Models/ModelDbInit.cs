@@ -34,6 +34,16 @@ public partial class ModelDbInit
     [Column("Customer_ID")]
     public int? CustomerId { get; set; }
 
+    [Column("Model_DB_Init_Product_Vector")]
+    [StringLength(100)]
+    [Unicode(false)]
+    public string? ModelDbInitProductVector { get; set; }
+
+    [Column("Model_DB_Init_Service_Vector")]
+    [StringLength(100)]
+    [Unicode(false)]
+    public string? ModelDbInitServiceVector { get; set; }
+
     [InverseProperty("Customer")]
     public virtual ClientInformation? ClientInformation { get; set; }
 

@@ -52,6 +52,16 @@ public partial class OperationsStage1
     [Unicode(false)]
     public string? Data { get; set; }
 
+    [Column("Operations_Stage_One_Product_Vector")]
+    [StringLength(100)]
+    [Unicode(false)]
+    public string? OperationsStageOneProductVector { get; set; }
+
+    [Column("Operations_Stage_One_Service_Vector")]
+    [StringLength(100)]
+    [Unicode(false)]
+    public string? OperationsStageOneServiceVector { get; set; }
+
     [ForeignKey("OperationsId")]
     [InverseProperty("OperationsStage1s")]
     public virtual ModelDbInitOperation? Operations { get; set; }
