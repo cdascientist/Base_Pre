@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
+import CompanyProfile from './CompanyProfile';
 
 export default function App() {
     const [companies, setCompanies] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [scrollIndex, setScrollIndex] = useState(0);
+    const [isVisible, setIsVisible] = useState(false);
+    const [selectedProfile, setSelectedProfile] = useState(null);
 
     useEffect(() => {
         fetch('http://localhost:5000/api/ModelDbInits/GetCustomers', {
@@ -10,15 +14,28 @@ export default function App() {
         })
             .then(response => response.json())
             .then(data => {
-                console.log('Data received:', data);
                 setCompanies(data);
                 setLoading(false);
+                setTimeout(() => setIsVisible(true), 100);
             })
             .catch(err => {
                 console.error('Error:', err);
                 setLoading(false);
             });
     }, []);
+
+    const handleCompanySelect = (customerId) => {
+        setSelectedProfile(customerId);
+    };
+
+    const staggeredFade = (delay) => ({
+        opacity: isVisible ? 1 : 0,
+        transition: `opacity 0.8s ease-in-out ${delay}s`,
+    });
+
+    if (selectedProfile !== null) {
+        return <CompanyProfile customerId={selectedProfile} />;
+    }
 
     if (loading) {
         return (
@@ -28,9 +45,10 @@ export default function App() {
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
                 color: '#57b3c0',
-                fontSize: '24px',
-                letterSpacing: '4px',
-                textShadow: '0 0 10px rgba(87, 179, 192, 0.5)'
+                fontSize: '28px',
+                letterSpacing: '6px',
+                textShadow: '0 0 15px rgba(87, 179, 192, 0.7)',
+                zIndex: 9999
             }}>
                 LOADING...
             </div>
@@ -43,7 +61,8 @@ export default function App() {
             top: 0,
             left: 0,
             width: '100%',
-            height: '100%'
+            height: '100%',
+            zIndex: 9995
         }}>
             {/* Title */}
             <div style={{
@@ -52,62 +71,142 @@ export default function App() {
                 left: '50%',
                 transform: 'translateX(-50%)',
                 color: '#57b3c0',
-                fontSize: '20px',
-                letterSpacing: '4px',
+                fontSize: '24px',
+                letterSpacing: '6px',
                 whiteSpace: 'nowrap',
-                fontWeight: '400',
-                textShadow: '0 0 10px rgba(87, 179, 192, 0.5)'
+                fontWeight: '500',
+                textShadow: '0 0 15px rgba(87, 179, 192, 0.7)',
+                zIndex: 9997,
+                ...staggeredFade(0)
             }}>
                 COMPANY DIRECTORY
             </div>
 
-            {/* Records Container */}
+            {/* Company Name Box */}
             <div style={{
                 position: 'absolute',
-                top: '15%',
+                top: '25%',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                width: '380px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '15px',
-                maxHeight: '70%',
-                overflowY: 'auto',
-                padding: '20px 0'
+                width: '100%',
+                maxWidth: '800px',
+                zIndex: 9996,
+                ...staggeredFade(0.3)
             }}>
-                {companies && companies.map((company, index) => (
-                    <div
-                        key={company.id || index}
-                        style={{
-                            padding: '20px',
-                            border: '2px solid #57b3c0',
-                            backgroundColor: 'rgba(87, 179, 192, 0.1)',
-                            color: '#57b3c0',
-                            textAlign: 'center',
-                            cursor: 'pointer',
-                            letterSpacing: '3px',
-                            fontSize: '18px',
-                            fontWeight: '500',
-                            textTransform: 'uppercase',
-                            textShadow: '0 0 10px rgba(87, 179, 192, 0.5)',
-                            transition: 'all 0.3s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(87, 179, 192, 0.2)';
-                            e.currentTarget.style.borderColor = '#d87930';
-                            e.currentTarget.style.boxShadow = '0 0 20px rgba(87, 179, 192, 0.3)';
-                            e.currentTarget.style.transform = 'translateX(10px)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(87, 179, 192, 0.1)';
+                <div
+                    onClick={() => handleCompanySelect(companies[scrollIndex]?.customerId)}
+                    style={{
+                        padding: '25px',
+                        border: '2.5px solid #57b3c0',
+                        backgroundColor: 'rgba(87, 179, 192, 0.1)',
+                        textAlign: 'center',
+                        letterSpacing: '4px',
+                        fontSize: '28px',
+                        fontWeight: '600',
+                        textTransform: 'uppercase',
+                        zIndex: 9998,
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(87, 179, 192, 0.2)';
+                        e.currentTarget.style.boxShadow = '0 0 15px rgba(87, 179, 192, 0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(87, 179, 192, 0.1)';
+                        e.currentTarget.style.boxShadow = 'none';
+                    }}
+                >
+                    <span style={{
+                        color: '#FFFFFF',
+                        textShadow: `
+                            0 0 20px rgba(87, 179, 192, 0.9),
+                            0 0 30px rgba(87, 179, 192, 0.7),
+                            0 0 40px rgba(87, 179, 192, 0.5)
+                        `,
+                        fontWeight: '500'
+                    }}>
+                        {companies[scrollIndex]?.companyName || 'UNNAMED'}
+                    </span>
+                </div>
+            </div>
+
+            {/* Navigation Buttons */}
+            <div style={{
+                position: 'absolute',
+                top: '110%',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                display: 'flex',
+                gap: '30px',
+                zIndex: 9999,
+                width: '100%',
+                maxWidth: '800px',
+                justifyContent: 'center',
+                ...staggeredFade(0.6)
+            }}>
+                <button
+                    onClick={() => setScrollIndex(prev => Math.max(0, prev - 1))}
+                    disabled={scrollIndex === 0}
+                    style={{
+                        padding: '10px 25px',
+                        border: '2px solid #57b3c0',
+                        backgroundColor: 'transparent',
+                        color: '#57b3c0',
+                        cursor: 'pointer',
+                        fontSize: '18px',
+                        letterSpacing: '2px',
+                        opacity: scrollIndex === 0 ? '0.5' : '1',
+                        transition: 'all 0.3s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                        if (scrollIndex !== 0) {
                             e.currentTarget.style.borderColor = '#57b3c0';
-                            e.currentTarget.style.boxShadow = 'none';
-                            e.currentTarget.style.transform = 'translateX(0)';
-                        }}
-                    >
-                        {company.companyName || 'UNNAMED'}
-                    </div>
-                ))}
+                            e.currentTarget.style.color = '#FFFFFF';
+                            e.currentTarget.style.boxShadow = '0 0 15px rgba(87, 179, 192, 0.5)';
+                            e.currentTarget.style.backgroundColor = 'rgba(87, 179, 192, 0.2)';
+                        }
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#57b3c0';
+                        e.currentTarget.style.color = '#57b3c0';
+                        e.currentTarget.style.boxShadow = 'none';
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                >
+                    PREVIOUS
+                </button>
+                <button
+                    onClick={() => setScrollIndex(prev => Math.min(companies.length - 1, prev + 1))}
+                    disabled={scrollIndex === companies.length - 1}
+                    style={{
+                        padding: '10px 25px',
+                        border: '2px solid #57b3c0',
+                        backgroundColor: 'transparent',
+                        color: '#57b3c0',
+                        cursor: 'pointer',
+                        fontSize: '18px',
+                        letterSpacing: '2px',
+                        opacity: scrollIndex === companies.length - 1 ? '0.5' : '1',
+                        transition: 'all 0.3s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                        if (scrollIndex !== companies.length - 1) {
+                            e.currentTarget.style.borderColor = '#57b3c0';
+                            e.currentTarget.style.color = '#FFFFFF';
+                            e.currentTarget.style.boxShadow = '0 0 15px rgba(87, 179, 192, 0.5)';
+                            e.currentTarget.style.backgroundColor = 'rgba(87, 179, 192, 0.2)';
+                        }
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#57b3c0';
+                        e.currentTarget.style.color = '#57b3c0';
+                        e.currentTarget.style.boxShadow = 'none';
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                >
+                    NEXT
+                </button>
             </div>
         </div>
     );

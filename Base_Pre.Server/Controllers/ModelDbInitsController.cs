@@ -326,6 +326,106 @@ namespace Base_Pre.Server.Controllers
         }
 
 
+        [HttpPost("GetCustomerByID/{customerid}")]
+        public async Task<ActionResult> GetCustomerByID(int customerid)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] Starting GetCustomerByID request for customer ID: {customerid}");
+
+                // Get Client Information
+                var client = await _context.ClientInformations
+                    .AsNoTracking()
+                    .Where(c => c.CustomerId == customerid)
+                    .Select(c => new
+                    {
+                        c.Id,
+                        c.ClientFirstName,
+                        c.ClientLastName,
+                        c.CleintPhone,
+                        c.ClientAddress,
+                        c.CustomerId,
+                        c.CompanyName
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (client == null)
+                {
+                    return NotFound($"No client information found for customer ID: {customerid}");
+                }
+
+                // Get ModelDbInit without creating
+                var modelDbInit = await _context.ModelDbInits
+                    .AsNoTracking()
+                    .Include(m => m.ClientInformation)
+                    .Include(m => m.ClientOrders)
+                    .FirstOrDefaultAsync(m => m.CustomerId == customerid);
+
+                // Get OperationsStage1 without creating
+                var operationsStage1 = await _context.OperationsStage1s
+                    .AsNoTracking()
+                    .Include(o => o.Operations)
+                    .Include(o => o.SubProductANavigation)
+                    .Include(o => o.SubProductBNavigation)
+                    .Include(o => o.SubProductCNavigation)
+                    .Include(o => o.SubServiceANavigation)
+                    .Include(o => o.SubServiceBNavigation)
+                    .Include(o => o.SubServiceCNavigation)
+                    .FirstOrDefaultAsync(o => o.CustomerId == customerid);
+
+                var response = new
+                {
+                    ClientInformation = client,
+                    ModelDbInit = modelDbInit != null ? new
+                    {
+                        ModelId = modelDbInit.Id,
+                        modelDbInit.ModelDbInitTimeStamp,
+                        modelDbInit.ModelDbInitCatagoricalId,
+                        modelDbInit.ModelDbInitCatagoricalName,
+                        modelDbInit.ModelDbInitModelData,
+                        DataSize = modelDbInit.Data?.Length ?? 0,
+                        ModelCustomerId = modelDbInit.CustomerId,
+                        modelDbInit.ModelDbInitProductVector,
+                        modelDbInit.ModelDbInitServiceVector,
+                        ClientOrders = modelDbInit.ClientOrders.Select(o => new { ClientOrderId = o.Id, ModelOrderId = o.OrderId }).ToList()
+                    } : null,
+                    OperationsStage1 = operationsStage1 != null ? new
+                    {
+                        OperationsId = operationsStage1.Id,
+                        OperationsOrderId = operationsStage1.OrderId,
+                        operationsStage1.CsrOpartationalId,
+                        operationsStage1.OperationalId,
+                        OperationsCustomerId = operationsStage1.CustomerId,
+                        operationsStage1.SalesId,
+                        ModelOperationsId = operationsStage1.OperationsId,
+                        operationsStage1.SubServiceA,
+                        operationsStage1.SubServiceB,
+                        operationsStage1.SubServiceC,
+                        operationsStage1.SubProductA,
+                        operationsStage1.SubProductB,
+                        operationsStage1.SubProductC,
+                        operationsStage1.OperationsStageOneProductVector,
+                        operationsStage1.OperationsStageOneServiceVector,
+                        ModelOperations = operationsStage1.Operations != null ? new { ModelOpId = operationsStage1.Operations.Id, ModelOpOrderId = operationsStage1.Operations.OrderId } : null,
+                        ProductA = operationsStage1.SubProductANavigation != null ? new { operationsStage1.SubProductANavigation.ProductName, operationsStage1.SubProductANavigation.ProductType } : null,
+                        ProductB = operationsStage1.SubProductBNavigation != null ? new { operationsStage1.SubProductBNavigation.ProductName, operationsStage1.SubProductBNavigation.ProductType } : null,
+                        ProductC = operationsStage1.SubProductCNavigation != null ? new { operationsStage1.SubProductCNavigation.ProductName, operationsStage1.SubProductCNavigation.ProductType } : null,
+                        ServiceA = operationsStage1.SubServiceANavigation != null ? new { operationsStage1.SubServiceANavigation.ServiceName, operationsStage1.SubServiceANavigation.ServiceType } : null,
+                        ServiceB = operationsStage1.SubServiceBNavigation != null ? new { operationsStage1.SubServiceBNavigation.ServiceName, operationsStage1.SubServiceBNavigation.ServiceType } : null,
+                        ServiceC = operationsStage1.SubServiceCNavigation != null ? new { operationsStage1.SubServiceCNavigation.ServiceName, operationsStage1.SubServiceCNavigation.ServiceType } : null
+                    } : null
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] Error retrieving data for customer ID {customerid}: {ex.Message}");
+                return StatusCode(500, "Internal server error while retrieving customer information");
+            }
+        }
+
+
 
 
 
