@@ -196,7 +196,8 @@ namespace Base_Pre.Server.Controllers
                                 p.ServiceName,
                                 p.ServiceType,
                                 p.Quantity,
-                                Price = (float)p.Price
+                                Price = (float)p.Price,
+                                ccvc = (float)p.Ccvc
                             })
                             .ToListAsync();
                     });
@@ -212,7 +213,8 @@ namespace Base_Pre.Server.Controllers
                                 p.ServiceName,
                                 p.ServiceType,
                                 p.Quantity,
-                                Price = (float)p.Price
+                                Price = (float)p.Price,
+                                ccvc = (float)p.Ccvc
                             })
                             .ToListAsync();
                     });
@@ -228,7 +230,8 @@ namespace Base_Pre.Server.Controllers
                                 p.ServiceName,
                                 p.ServiceType,
                                 p.Quantity,
-                                Price = (float)p.Price
+                                Price = (float)p.Price,
+                                ccvc = (float)p.Ccvc
                             })
                             .ToListAsync();
                     });
@@ -919,16 +922,11 @@ namespace Base_Pre.Server.Controllers
             System.Diagnostics.Debug.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] Session {sessionId}: Starting ProcessFactoryTwo (Model A)");
 
 
-            
-            System.Diagnostics.Debug.WriteLine("ProcessFactoryTwo: Retrieving OperationsStage1 Record from JIT Memory");
-            var storedCustomerId = Jit_Memory_Object.GetProperty("CustomerId");
-            var storedData = Jit_Memory_Object.GetProperty("ProcessFactoryOne_Data") as byte[];
 
-            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved stored ProcessFactoryOne_Data CustomerId: {storedCustomerId}");
-            System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Retrieved stored ProcessFactoryOne_Data size: {storedData?.Length ?? 0} bytes");
-
-
-            
+            /// <summary>
+            /// Subsequent Usage: 1
+            /// Model A Get the newly gernerated or already generated  ModelDbInit Subsequent Data OperationsStage1 from ModelDBInit->ModelDBInitOperations->OperationsStage1
+            /// </summary>
             var operationsStage1Record = Jit_Memory_Object.GetProperty("OperationsStage1Record") as OperationsStage1;
             var stageSubProducts = new List<int?>();
 
@@ -944,6 +942,10 @@ namespace Base_Pre.Server.Controllers
                     System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Collected {stageSubProducts.Count} SubProduct IDs from OperationsStage1");
                 }
 
+                /// <summary>
+                /// Subsequent Usage: 2
+                /// Model A Filter Products Based Upon Product ID's assigned to Operation Stage One 
+                /// </summary>
                 var allSubProducts = Jit_Memory_Object.GetProperty("All_SubProducts") as List<dynamic>;
                 var filteredProducts = allSubProducts?.Where(p => stageSubProducts.Contains((int)p.Id)).ToList();
                 System.Diagnostics.Debug.WriteLine($"ProcessFactoryTwo: Filtered products count: {filteredProducts?.Count ?? 0}");
@@ -951,13 +953,22 @@ namespace Base_Pre.Server.Controllers
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("OperationsStage1Record not found in JIT Memory");
+                System.Diagnostics.Debug.WriteLine("Model A OperationsStage1Record not found in JIT Memory");
             }
 
-            System.Diagnostics.Debug.WriteLine("Phase One: Initializing Data Clustering Implementation");
+            /// <summary>
+            /// Subsequent Usage: 3
+            /// Model A Initializing Data Clustering Implementation 
+            /// </summary>
+            System.Diagnostics.Debug.WriteLine("Model A Phase One: Initializing Data Clustering Implementation");
             var FilteredProducts = (List<dynamic>)Jit_Memory_Object.GetProperty("FilteredProducts");
             System.Diagnostics.Debug.WriteLine($"Found {FilteredProducts.Count} for Data Clustering");
 
+
+            /// <summary>
+            /// Subsequent Usage: 4
+            /// Model A Extract CCVC point values to create trajectory vector
+            /// </summary>
             // Extract the ccvc values
             System.Diagnostics.Debug.WriteLine("Extracting ccvc's for clustering");
             foreach (dynamic product in FilteredProducts)
@@ -1051,9 +1062,12 @@ namespace Base_Pre.Server.Controllers
             Jit_Memory_Object.AddProperty("ModelA_MedianVector_Normalized", new double[] { nx, ny, nz });
             Jit_Memory_Object.AddProperty("ModelA_MedianMagnitude", magnitude);
 
+            
+            
+            
+            
+            
             System.Diagnostics.Debug.WriteLine("Phase Two: Initializing Neural Network Implementation");
-
-
             await Task.Run(() =>
             {
                 try
@@ -1067,30 +1081,54 @@ namespace Base_Pre.Server.Controllers
                         .Distinct()
                         .ToList();
 
-                    // Get normalized price data
-                    var priceData = new float[FilteredProducts.Count, 1];
+                    // Create input vectors from price and centroid data
+                    var inputVectors = new float[FilteredProducts.Count, 4]; // 1 for price, 3 for vector coordinates
                     for (int i = 0; i < FilteredProducts.Count; i++)
                     {
-                        priceData[i, 0] = (float)FilteredProducts[i].Price / 1000f; // Normalize price
+                        inputVectors[i, 0] = (float)FilteredProducts[i].Price / 1000f; // Normalized price
+                        inputVectors[i, 1] = (float)x; // Vector x coordinate
+                        inputVectors[i, 2] = (float)y; // Vector y coordinate
+                        inputVectors[i, 3] = (float)z; // Vector z coordinate
                     }
 
                     tf.compat.v1.disable_eager_execution();
                     var g = tf.Graph();
                     using (var sess = tf.Session(g))
                     {
-                        var x = tf.placeholder(tf.float32, shape: new[] { -1, uniqueNames.Count + 1 }, name: "input");
+                        // Input placeholders
+                        var x_data = tf.placeholder(tf.float32, shape: new[] { -1, 4 }, name: "x_data");
                         var y = tf.placeholder(tf.float32, shape: new[] { -1, 1 }, name: "output");
 
-                        var W = tf.Variable(tf.random.normal(new[] { uniqueNames.Count + 1, 1 }, mean: 0.0f, stddev: 0.01f), name: "weight");
+                        // Compute vector magnitude
+                        var magnitude = tf.sqrt(tf.reduce_sum(tf.square(x_data), axis: 1));
+                        var mag_expanded = tf.expand_dims(magnitude, axis: 1);
+
+                        // Normalize vectors
+                        var epsilon = tf.constant(1e-8f);
+                        var x_normalized = x_data / (mag_expanded + epsilon);
+
+                        // Apply magnitude-based scaling
+                        var scale = mag_expanded / (1.0f + mag_expanded);
+                        var x_modified = x_data * scale;
+
+                        // One-hot encoding for product names
+                        var nameFeatures = tf.placeholder(tf.float32, shape: new[] { -1, uniqueNames.Count }, name: "names");
+
+                        // Combine modified vectors with name features
+                        var combinedInput = tf.concat(new[] { x_modified, nameFeatures }, axis: 1);
+
+                        // Neural network layers
+                        var inputDim = 4 + uniqueNames.Count; // Modified vectors (4) + name features
+                        var W = tf.Variable(tf.random.normal(new[] { inputDim, 1 }, mean: 0.0f, stddev: 0.01f), name: "weight");
                         var b = tf.Variable(tf.zeros(new[] { 1 }), name: "bias");
 
-                        var predictions = tf.add(tf.matmul(x, W), b);
+                        var predictions = tf.add(tf.matmul(combinedInput, W), b);
                         var loss = tf.reduce_mean(tf.square(predictions - y)) * 0.5f;
 
                         var optimizer = tf.train.GradientDescentOptimizer(learningRate);
                         var trainOp = optimizer.minimize(loss);
 
-                        // Create one-hot encoding for product names
+                        // Prepare training data
                         var oneHotNames = new float[FilteredProducts.Count, uniqueNames.Count];
                         for (int i = 0; i < FilteredProducts.Count; i++)
                         {
@@ -1098,23 +1136,18 @@ namespace Base_Pre.Server.Controllers
                             oneHotNames[i, nameIndex] = 1.0f;
                         }
 
-                        // Combine price and one-hot encoded names for input
-                        var inputData = new float[FilteredProducts.Count, uniqueNames.Count + 1];
+                        var priceData = new float[FilteredProducts.Count, 1];
                         for (int i = 0; i < FilteredProducts.Count; i++)
                         {
-                            inputData[i, 0] = priceData[i, 0];
-                            for (int j = 0; j < uniqueNames.Count; j++)
-                            {
-                                inputData[i, j + 1] = oneHotNames[i, j];
-                            }
+                            priceData[i, 0] = (float)FilteredProducts[i].Price / 1000f;
                         }
 
                         sess.run(tf.global_variables_initializer());
 
                         System.Diagnostics.Debug.WriteLine("Model A - Data shapes:");
-                        System.Diagnostics.Debug.WriteLine($"Input data shape: {inputData.GetLength(0)} x {inputData.GetLength(1)}");
+                        System.Diagnostics.Debug.WriteLine($"Input vectors shape: {inputVectors.GetLength(0)} x {inputVectors.GetLength(1)}");
+                        System.Diagnostics.Debug.WriteLine($"Name features shape: {oneHotNames.GetLength(0)} x {oneHotNames.GetLength(1)}");
                         System.Diagnostics.Debug.WriteLine($"Price data shape: {priceData.GetLength(0)} x {priceData.GetLength(1)}");
-                        System.Diagnostics.Debug.WriteLine($"Number of unique products: {uniqueNames.Count}");
 
                         System.Diagnostics.Debug.WriteLine($"Model A - Starting training with learning rate: {learningRate}");
                         float previousLoss = float.MaxValue;
@@ -1123,15 +1156,23 @@ namespace Base_Pre.Server.Controllers
                         for (int epoch = 0; epoch < epochs; epoch++)
                         {
                             var feedDict = new Dictionary<Tensor, object>
-                            {
-                                { x, inputData },
-                                { y, priceData }
-                            };
+                {
+                    { x_data, inputVectors },
+                    { nameFeatures, oneHotNames },
+                    { y, priceData }
+                };
 
                             var feedItems = feedDict.Select(kv => new FeedItem(kv.Key, kv.Value)).ToArray();
 
                             sess.run(trainOp, feedItems);
                             var currentLoss = (float)sess.run(loss, feedItems);
+
+                            // Store magnitude values for analysis
+                            if (epoch % 10 == 0)
+                            {
+                                var magnitudeValues = ((NDArray)sess.run(magnitude, feedItems)).ToArray<float>();
+                                results.TryAdd($"Magnitude_Epoch_{epoch}", magnitudeValues);
+                            }
 
                             if (float.IsNaN(currentLoss) || float.IsInfinity(currentLoss))
                             {
@@ -1162,16 +1203,65 @@ namespace Base_Pre.Server.Controllers
                             results.TryAdd($"Loss_Epoch_{epoch}", currentLoss);
                         }
 
+                        System.Diagnostics.Debug.WriteLine("Starting model serialization process");
+                        using (var memoryStream = new MemoryStream())
+                        using (var writer = new BinaryWriter(memoryStream))
+                        {
+                            var wNDArray = (NDArray)sess.run(W);
+                            var wData = wNDArray.ToArray<float>();
+                            writer.Write(wData.Length);
+                            foreach (var w in wData)
+                            {
+                                writer.Write(w);
+                            }
+                            System.Diagnostics.Debug.WriteLine("Model weights serialized successfully");
+
+                            var bNDArray = (NDArray)sess.run(b);
+                            var bData = bNDArray.ToArray<float>();
+                            writer.Write(bData.Length);
+                            foreach (var bias in bData)
+                            {
+                                writer.Write(bias);
+                            }
+                            System.Diagnostics.Debug.WriteLine("Model bias serialized successfully");
+
+                            // Store magnitude-related data
+                            var finalMagnitudeArray = ((NDArray)sess.run(magnitude, new[] { new FeedItem(x_data, inputVectors) })).ToArray<float>();
+                            writer.Write(finalMagnitudeArray.Length);
+                            foreach (var mag in finalMagnitudeArray)
+                            {
+                                writer.Write(mag);
+                            }
+
+                            model.Data = memoryStream.ToArray(); // Use the model parameter instead of ML_Model
+                           
+
+                            Jit_Memory_Object.AddProperty("ModelA_Data", model.Data); // Use model.Data here
+                            System.Diagnostics.Debug.WriteLine("Model data saved successfully");
+
+                            var storedCustomerId = Jit_Memory_Object.GetProperty("CustomerId");
+                            var storedModelAData = Jit_Memory_Object.GetProperty("ModelA_Data") as byte[];
+                            System.Diagnostics.Debug.WriteLine($"Verification - Customer ID: {storedCustomerId}");
+                            System.Diagnostics.Debug.WriteLine($"Verification - Data Size: {storedModelAData?.Length ?? 0} bytes");
+                        }
+
+                        // Store final model state
                         var finalW = sess.run(W);
                         var finalB = sess.run(b);
-                        results.TryAdd("FinalWeights", finalW.ToArray());
-                        results.TryAdd("FinalBias", finalB.ToArray());
+                        var finalMagnitudes = ((NDArray)sess.run(magnitude, new[] { new FeedItem(x_data, inputVectors) })).ToArray<float>();
+
+                        results.TryAdd("FinalWeights", ((NDArray)finalW).ToArray<float>());
+                        results.TryAdd("FinalBias", ((NDArray)finalB).ToArray<float>());
+                        results.TryAdd("FinalMagnitudes", finalMagnitudes);
+                        results.TryAdd("ProductNames", uniqueNames);
+
+                        // Store additional model data in JIT memory
+                        Jit_Memory_Object.AddProperty("ModelA_FinalWeights", ((NDArray)finalW).ToArray<float>());
+                        Jit_Memory_Object.AddProperty("ModelA_FinalBias", ((NDArray)finalB).ToArray<float>());
+                        Jit_Memory_Object.AddProperty("ModelA_FinalMagnitudes", finalMagnitudes);
 
                         System.Diagnostics.Debug.WriteLine($"Model A - Training completed");
                         System.Diagnostics.Debug.WriteLine($"Model A - Final loss: {previousLoss:E4}");
-
-                        // Store product names for reference
-                        results.TryAdd("ProductNames", uniqueNames);
                     }
                 }
                 catch (Exception ex)
@@ -1199,7 +1289,7 @@ namespace Base_Pre.Server.Controllers
 
 
         private async Task ProcessFactoryThree(ModelDbInit model, int id, string name, int customerID, int sessionId,
-     Session session, ConcurrentDictionary<string, object> results)
+      Session session, ConcurrentDictionary<string, object> results)
         {
             Jit_Memory_Object.AddProperty("ProcessFactoryThreeActive", true);
             bool isActive = (bool)Jit_Memory_Object.GetProperty("ProcessFactoryThreeActive");
@@ -1224,123 +1314,300 @@ namespace Base_Pre.Server.Controllers
                 var allSubServices = Jit_Memory_Object.GetProperty("All_SubServices") as List<dynamic>;
                 var filteredServices = allSubServices?.Where(p => stageSubService.Contains((int)p.Id)).ToList();
                 System.Diagnostics.Debug.WriteLine($"ProcessFactoryThree: Filtered services count: {filteredServices?.Count ?? 0}");
+                Jit_Memory_Object.AddProperty("FilteredServices", filteredServices);
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("OperationsStage1Record not found in JIT Memory");
+                System.Diagnostics.Debug.WriteLine("Model B OperationsStage1Record not found in JIT Memory");
+                return;
             }
 
+            var FilteredServices = (List<dynamic>)Jit_Memory_Object.GetProperty("FilteredServices");
+            if (FilteredServices == null || !FilteredServices.Any())
+            {
+                System.Diagnostics.Debug.WriteLine("No filtered services available for processing");
+                return;
+            }
 
+            System.Diagnostics.Debug.WriteLine("Model B Phase One: Initializing Data Clustering Implementation");
+            System.Diagnostics.Debug.WriteLine($"Found {FilteredServices.Count} for Data Clustering");
 
+            // Create array of CCVC values for clustering
+            var ccvcList = new List<double[]>();
+            var ccvcValues = new List<double>();
 
+            System.Diagnostics.Debug.WriteLine("Extracting service CCVCs for clustering");
+            foreach (dynamic service in FilteredServices)
+            {
+                System.Diagnostics.Debug.WriteLine($"Service Data:");
+                System.Diagnostics.Debug.WriteLine($"ID: {service.Id}");
+                System.Diagnostics.Debug.WriteLine($"Service Name: {service.ServiceName}");
+                System.Diagnostics.Debug.WriteLine($"Service Type: {service.ServiceType}");
+                System.Diagnostics.Debug.WriteLine($"Quantity: {service.Quantity}");
+                System.Diagnostics.Debug.WriteLine($"Price: {service.Price}");
+                System.Diagnostics.Debug.WriteLine($"CCVC: {service.ccvc}");
+                System.Diagnostics.Debug.WriteLine("-------------------");
 
+                double ccvcValue = Convert.ToDouble(service.ccvc);
+                ccvcList.Add(new double[] { ccvcValue });
+                ccvcValues.Add(ccvcValue);
+            }
 
+            double[][] ccvcArray = ccvcList.ToArray();
 
+            // Calculate median of CCVC values
+            var sortedCcvc = ccvcValues.OrderBy(v => v).ToList();
+            double medianCcvc = sortedCcvc.Count % 2 == 0
+                ? (sortedCcvc[sortedCcvc.Count / 2 - 1] + sortedCcvc[sortedCcvc.Count / 2]) / 2
+                : sortedCcvc[sortedCcvc.Count / 2];
 
+            System.Diagnostics.Debug.WriteLine($"CCVC values: {string.Join(", ", ccvcValues)}");
+            System.Diagnostics.Debug.WriteLine($"Median CCVC value: {medianCcvc:F4}");
 
+            // Define clustering parameters
+            int numClusters = 3;
+            int numIterations = 100;
 
+            System.Diagnostics.Debug.WriteLine($"Clustering parameters: clusters={numClusters}, iterations={numIterations}");
+
+            // Create k-means algorithm
+            var kmeans_ModelB = new Accord.MachineLearning.KMeans(numClusters)
+            {
+                MaxIterations = numIterations,
+                Distance = new SquareEuclidean()
+            };
+
+            // Compute the algorithm
+            System.Diagnostics.Debug.WriteLine("Starting k-means clustering");
+            var clusters = kmeans_ModelB.Learn(ccvcArray);
+
+            // Store clustering results
+            Jit_Memory_Object.AddProperty("ModelB_Clusters", clusters);
+            Jit_Memory_Object.AddProperty("ModelB_ClusterCenters", kmeans_ModelB.Centroids);
+
+            // Get centroids and sort them
+            var centroidValues = kmeans_ModelB.Centroids
+                .Select(c => c[0])
+                .OrderBy(v => v)
+                .ToList();
+
+            System.Diagnostics.Debug.WriteLine("\nProcessing Model B centroids in 3D space:");
+
+            // Use these values for the 3D vector
+            double x = centroidValues[0];  // Lowest CCVC centroid
+            double y = centroidValues[1];  // Middle CCVC centroid
+            double z = centroidValues[2];  // Highest CCVC centroid
+
+            // Create the vector
+            double[] vector = { x, y, z };
+
+            // Calculate the magnitude
+            double magnitude = Math.Sqrt(x * x + y * y + z * z);
+
+            // Calculate normalized vector components
+            double nx = (magnitude > 0) ? x / magnitude : 0;
+            double ny = (magnitude > 0) ? y / magnitude : 0;
+            double nz = (magnitude > 0) ? z / magnitude : 0;
+
+            System.Diagnostics.Debug.WriteLine($"Individual Centroid Values: {x:F4}, {y:F4}, {z:F4}");
+            System.Diagnostics.Debug.WriteLine($"Vector Coordinates: X={x:F4}, Y={y:F4}, Z={z:F4}");
+            System.Diagnostics.Debug.WriteLine($"Vector Magnitude: {magnitude:F4}");
+            System.Diagnostics.Debug.WriteLine($"Normalized Vector: nx={nx:F4}, ny={ny:F4}, nz={nz:F4}");
+
+            // Store the vector data
+            Jit_Memory_Object.AddProperty("ModelB_MedianVector", vector);
+            Jit_Memory_Object.AddProperty("ModelB_MedianVector_Normalized", new double[] { nx, ny, nz });
+            Jit_Memory_Object.AddProperty("ModelB_MedianMagnitude", magnitude);
+
+            System.Diagnostics.Debug.WriteLine("Phase Two: Initializing Neural Network Implementation");
             await Task.Run(() =>
             {
-                try
+            try
+            {
+                int epochs = 100;
+                float learningRate = 0.0001f;
+
+                // Get unique service names
+                var uniqueNames = FilteredServices
+                    .Select(p => (string)p.ServiceName)
+                    .Distinct()
+                    .ToList();
+
+                // Create input vectors from CCVC and centroid data
+                var inputVectors = new float[FilteredServices.Count, 4];
+                for (int i = 0; i < FilteredServices.Count; i++)
                 {
-                    int epochs = 100;
-                    float learningRate = 0.0001f;
-                    var uniqueNames = new List<string> { "name1", "name2", "name3" };
+                    inputVectors[i, 0] = (float)FilteredServices[i].ccvc;  // Use CCVC instead of price
+                    inputVectors[i, 1] = (float)x; // Vector x coordinate
+                    inputVectors[i, 2] = (float)y; // Vector y coordinate
+                    inputVectors[i, 3] = (float)z; // Vector z coordinate
+                }
 
-                    tf.compat.v1.disable_eager_execution();
-                    var g = tf.Graph();
-                    using (var sess = tf.Session(g))
+                tf.compat.v1.disable_eager_execution();
+                var g = tf.Graph();
+                using (var sess = tf.Session(g))
+                {
+                    // Input placeholders
+                    var x_data = tf.placeholder(tf.float32, shape: new[] { -1, 4 }, name: "x_data");
+                    var y = tf.placeholder(tf.float32, shape: new[] { -1, 1 }, name: "output");
+
+                    // Compute vector magnitude
+                    var magnitude = tf.sqrt(tf.reduce_sum(tf.square(x_data), axis: 1));
+                    var mag_expanded = tf.expand_dims(magnitude, axis: 1);
+
+                    // Normalize vectors
+                    var epsilon = tf.constant(1e-8f);
+                    var x_normalized = x_data / (mag_expanded + epsilon);
+
+                    // Apply magnitude-based scaling
+                    var scale = mag_expanded / (1.0f + mag_expanded);
+                    var x_modified = x_data * scale;
+
+                    // One-hot encoding for service names
+                    var nameFeatures = tf.placeholder(tf.float32, shape: new[] { -1, uniqueNames.Count }, name: "names");
+
+                    // Combine modified vectors with name features
+                    var combinedInput = tf.concat(new[] { x_modified, nameFeatures }, axis: 1);
+
+                    // Neural network layers
+                    var inputDim = 4 + uniqueNames.Count; // Modified vectors (4) + name features
+                    var W = tf.Variable(tf.random.normal(new[] { inputDim, 1 }, mean: 0.0f, stddev: 0.01f), name: "weight");
+                    var b = tf.Variable(tf.zeros(new[] { 1 }), name: "bias");
+
+                    var predictions = tf.add(tf.matmul(combinedInput, W), b);
+                    var loss = tf.reduce_mean(tf.square(predictions - y)) * 0.5f;
+
+                    var optimizer = tf.train.GradientDescentOptimizer(learningRate);
+                    var trainOp = optimizer.minimize(loss);
+
+                    // Prepare training data
+                    var oneHotNames = new float[FilteredServices.Count, uniqueNames.Count];
+                    for (int i = 0; i < FilteredServices.Count; i++)
                     {
-                        var x = tf.placeholder(tf.float32, shape: new[] { -1, 4 }, name: "input");
-                        var y = tf.placeholder(tf.float32, shape: new[] { -1, 1 }, name: "output");
+                        var nameIndex = uniqueNames.IndexOf((string)FilteredServices[i].ServiceName);
+                        oneHotNames[i, nameIndex] = 1.0f;
+                    }
 
-                        var W = tf.Variable(tf.random.normal(new[] { 4, 1 }, mean: 0.0f, stddev: 0.01f), name: "weight");
-                        var b = tf.Variable(tf.zeros(new[] { 1 }), name: "bias");
-
-                        var predictions = tf.add(tf.matmul(x, W), b);
-                        var loss = tf.reduce_mean(tf.square(predictions - y)) * 0.5f;
-
-                        var optimizer = tf.train.GradientDescentOptimizer(learningRate);
-                        var trainOp = optimizer.minimize(loss);
-
-                        var priceData = new float[,] {
-                    { 150f/1000f },
-                    { 250f/1000f },
-                    { 350f/1000f }
-                };
-
-                        var oneHotNames = new float[3, 3];
-                        for (int i = 0; i < 3; i++)
-                        {
-                            oneHotNames[i, (i + 1) % 3] = 1.0f;
-                        }
-
-                        var inputData = new float[3, 4];
-                        for (int i = 0; i < 3; i++)
-                        {
-                            inputData[i, 0] = priceData[i, 0];
-                            for (int j = 0; j < 3; j++)
-                            {
-                                inputData[i, j + 1] = oneHotNames[i, j];
-                            }
-                        }
-
-                        sess.run(tf.global_variables_initializer());
-
-                        System.Diagnostics.Debug.WriteLine("Model B - Data shapes:");
-                        System.Diagnostics.Debug.WriteLine($"Input data shape: {string.Join(",", inputData.GetLength(0))} x {string.Join(",", inputData.GetLength(1))}");
-                        System.Diagnostics.Debug.WriteLine($"Price data shape: {string.Join(",", priceData.GetLength(0))} x {string.Join(",", priceData.GetLength(1))}");
-
-                        System.Diagnostics.Debug.WriteLine($"Model B - Starting training with learning rate: {learningRate}");
-                        float previousLoss = float.MaxValue;
-                        int stableCount = 0;
-
-                        for (int epoch = 0; epoch < epochs; epoch++)
-                        {
-                            var feedDict = new Dictionary<Tensor, object>
+                    var ccvcData = new float[FilteredServices.Count, 1];
+                    for (int i = 0; i < FilteredServices.Count; i++)
                     {
-                        { x, inputData },
-                        { y, priceData }
+                        ccvcData[i, 0] = (float)FilteredServices[i].ccvc;
+                    }
+
+                    sess.run(tf.global_variables_initializer());
+
+                    System.Diagnostics.Debug.WriteLine("Model B - Data shapes:");
+                    System.Diagnostics.Debug.WriteLine($"Input vectors shape: {inputVectors.GetLength(0)} x {inputVectors.GetLength(1)}");
+                    System.Diagnostics.Debug.WriteLine($"Name features shape: {oneHotNames.GetLength(0)} x {oneHotNames.GetLength(1)}");
+                    System.Diagnostics.Debug.WriteLine($"CCVC data shape: {ccvcData.GetLength(0)} x {ccvcData.GetLength(1)}");
+
+                    System.Diagnostics.Debug.WriteLine($"Model B - Starting training with learning rate: {learningRate}");
+                    float previousLoss = float.MaxValue;
+                    int stableCount = 0;
+
+                    for (int epoch = 0; epoch < epochs; epoch++)
+                    {
+                        var feedDict = new Dictionary<Tensor, object>
+                    {
+                        { x_data, inputVectors },
+                        { nameFeatures, oneHotNames },
+                        { y, ccvcData }
                     };
 
-                            var feedItems = feedDict.Select(kv => new FeedItem(kv.Key, kv.Value)).ToArray();
+                        var feedItems = feedDict.Select(kv => new FeedItem(kv.Key, kv.Value)).ToArray();
 
-                            sess.run(trainOp, feedItems);
-                            var currentLoss = (float)sess.run(loss, feedItems);
+                        sess.run(trainOp, feedItems);
+                        var currentLoss = (float)sess.run(loss, feedItems);
 
-                            if (float.IsNaN(currentLoss) || float.IsInfinity(currentLoss))
-                            {
-                                System.Diagnostics.Debug.WriteLine($"Model B - Training diverged at epoch {epoch}. Stopping training.");
-                                break;
-                            }
-
-                            if (Math.Abs(previousLoss - currentLoss) < 1e-6)
-                            {
-                                stableCount++;
-                                if (stableCount > 5)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"Model B - Training converged at epoch {epoch}");
-                                    break;
-                                }
-                            }
-                            else
-                            {
-                                stableCount = 0;
-                            }
-                            previousLoss = currentLoss;
-
-                            if (epoch % 10 == 0)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"Model B - Epoch {epoch}, Loss: {currentLoss:E4}");
-                            }
-
-                            results.TryAdd($"Loss_Epoch_{epoch}", currentLoss);
+                        // Store magnitude values for analysis
+                        if (epoch % 10 == 0)
+                        {
+                            var magnitudeValues = ((NDArray)sess.run(magnitude, feedItems)).ToArray<float>();
+                            results.TryAdd($"Magnitude_Epoch_{epoch}", magnitudeValues);
                         }
 
+                        if (float.IsNaN(currentLoss) || float.IsInfinity(currentLoss))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Model B - Training diverged at epoch {epoch}. Stopping training.");
+                            break;
+                        }
+
+                        if (Math.Abs(previousLoss - currentLoss) < 1e-6)
+                        {
+                            stableCount++;
+                            if (stableCount > 5)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Model B - Training converged at epoch {epoch}");
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            stableCount = 0;
+                        }
+                        previousLoss = currentLoss;
+
+                        if (epoch % 10 == 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Model B - Epoch {epoch}, Loss: {currentLoss:E4}");
+                        }
+
+                        results.TryAdd($"Loss_Epoch_{epoch}", currentLoss);
+                    }
+
+                    System.Diagnostics.Debug.WriteLine("Starting model serialization process");
+                    using (var memoryStream = new MemoryStream())
+                    using (var writer = new BinaryWriter(memoryStream))
+                    {
+                        var wNDArray = (NDArray)sess.run(W);
+                        var wData = wNDArray.ToArray<float>();
+                        writer.Write(wData.Length);
+                        foreach (var w in wData)
+                        {
+                            writer.Write(w);
+                        }
+                        System.Diagnostics.Debug.WriteLine("Model weights serialized successfully");
+
+                        var bNDArray = (NDArray)sess.run(b);
+                        var bData = bNDArray.ToArray<float>();
+                        writer.Write(bData.Length);
+                        foreach (var bias in bData)
+                        {
+                            writer.Write(bias);
+                        }
+                        System.Diagnostics.Debug.WriteLine("Model bias serialized successfully");
+
+                        var finalMagnitudeArray = ((NDArray)sess.run(magnitude, new[] { new FeedItem(x_data, inputVectors) })).ToArray<float>();
+                        writer.Write(finalMagnitudeArray.Length);
+                        foreach (var mag in finalMagnitudeArray)
+                        {
+                            writer.Write(mag);
+                        }
+
+                        model.Data = memoryStream.ToArray();
+                        Jit_Memory_Object.AddProperty("ModelB_Data", model.Data);
+                        System.Diagnostics.Debug.WriteLine("Model data saved successfully");
+
+                            var storedCustomerId = Jit_Memory_Object.GetProperty("CustomerId");
+                            var storedModelBData = Jit_Memory_Object.GetProperty("ModelB_Data") as byte[];
+                            System.Diagnostics.Debug.WriteLine($"Verification - Customer ID: {storedCustomerId}");
+                            System.Diagnostics.Debug.WriteLine($"Verification - Data Size: {storedModelBData?.Length ?? 0} bytes");
+                        }
+
+                        // Store final model state
                         var finalW = sess.run(W);
                         var finalB = sess.run(b);
-                        results.TryAdd("FinalWeights", finalW.ToArray());
-                        results.TryAdd("FinalBias", finalB.ToArray());
+                        var finalMagnitudes = ((NDArray)sess.run(magnitude, new[] { new FeedItem(x_data, inputVectors) })).ToArray<float>();
+
+                        results.TryAdd("FinalWeights", ((NDArray)finalW).ToArray<float>());
+                        results.TryAdd("FinalBias", ((NDArray)finalB).ToArray<float>());
+                        results.TryAdd("FinalMagnitudes", finalMagnitudes);
+                        results.TryAdd("ServiceNames", uniqueNames);
+
+                        // Store additional model data in JIT memory
+                        Jit_Memory_Object.AddProperty("ModelB_FinalWeights", ((NDArray)finalW).ToArray<float>());
+                        Jit_Memory_Object.AddProperty("ModelB_FinalBias", ((NDArray)finalB).ToArray<float>());
+                        Jit_Memory_Object.AddProperty("ModelB_FinalMagnitudes", finalMagnitudes);
 
                         System.Diagnostics.Debug.WriteLine($"Model B - Training completed");
                         System.Diagnostics.Debug.WriteLine($"Model B - Final loss: {previousLoss:E4}");
@@ -1364,132 +1631,270 @@ namespace Base_Pre.Server.Controllers
 
 
 
-
-
-
-
-
-
-
         private async Task ProcessFactoryFour(ModelDbInit model, int id, string name, int customerID, int sessionId,
-     ConcurrentDictionary<string, object> modelAResults, ConcurrentDictionary<string, object> modelBResults)
+       ConcurrentDictionary<string, object> modelAResults, ConcurrentDictionary<string, object> modelBResults)
         {
             Jit_Memory_Object.AddProperty("ProcessFactoryFourActive", true);
             bool isActive = (bool)Jit_Memory_Object.GetProperty("ProcessFactoryFourActive");
             System.Diagnostics.Debug.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] Session {sessionId}: ProcessFactoryFourActive property value: {isActive}");
             System.Diagnostics.Debug.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}] Session {sessionId}: Starting ProcessFactoryFour (Model D)");
 
-            await Task.Run(() =>
+            // Retrieve OperationsStage1 record
+            var operationsStage1Record = Jit_Memory_Object.GetProperty("OperationsStage1Record") as OperationsStage1;
+            if (operationsStage1Record == null)
+            {
+                System.Diagnostics.Debug.WriteLine("Error: OperationsStage1Record not found in JIT Memory");
+                return;
+            }
+
+            // Retrieve Model A and Model B data
+            var modelAData = Jit_Memory_Object.GetProperty("ModelA_Data") as byte[];
+            var modelBData = Jit_Memory_Object.GetProperty("ModelB_Data") as byte[];
+
+            if (modelAData == null || modelBData == null)
+            {
+                System.Diagnostics.Debug.WriteLine("Error: Model A or Model B data not found in JIT Memory");
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"Retrieved Model A Data Size: {modelAData.Length} bytes");
+            System.Diagnostics.Debug.WriteLine($"Retrieved Model B Data Size: {modelBData.Length} bytes");
+
+            // Get CustomerId from JIT Memory
+            var storedCustomerId = Jit_Memory_Object.GetProperty("CustomerId");
+            if (storedCustomerId == null)
+            {
+                System.Diagnostics.Debug.WriteLine("Error: CustomerId not found in JIT Memory");
+                return;
+            }
+
+            // Deserialize and combine models' data
+            using (var modelAStream = new MemoryStream(modelAData))
+            using (var modelBStream = new MemoryStream(modelBData))
+            using (var modelAReader = new BinaryReader(modelAStream))
+            using (var modelBReader = new BinaryReader(modelBStream))
             {
                 try
                 {
-                    int epochs = 100;
-                    float learningRate = 0.0001f;
-                    var uniqueNames = new List<string> { "name1", "name2", "name3" };
-
-                    tf.compat.v1.disable_eager_execution();
-                    var g = tf.Graph();
-                    using (var sess = tf.Session(g))
+                    // Read Model A weights and biases
+                    int weightALength = modelAReader.ReadInt32();
+                    var weightsA = new float[weightALength];
+                    for (int i = 0; i < weightALength; i++)
                     {
-                        var x = tf.placeholder(tf.float32, shape: new[] { -1, 4 }, name: "input");
-                        var y = tf.placeholder(tf.float32, shape: new[] { -1, 1 }, name: "output");
+                        weightsA[i] = modelAReader.ReadSingle();
+                    }
 
-                        var W = tf.Variable(tf.random.normal(new[] { 4, 1 }, mean: 0.0f, stddev: 0.01f), name: "weight");
-                        var b = tf.Variable(tf.zeros(new[] { 1 }), name: "bias");
-
-                        var predictions = tf.add(tf.matmul(x, W), b);
-                        var loss = tf.reduce_mean(tf.square(predictions - y)) * 0.5f;
-
-                        var optimizer = tf.train.GradientDescentOptimizer(learningRate);
-                        var trainOp = optimizer.minimize(loss);
-
-                        var priceData = new float[,] {
-                    { 175f/1000f },
-                    { 275f/1000f },
-                    { 375f/1000f }
-                };
-
-                        var oneHotNames = new float[3, 3];
-                        for (int i = 0; i < 3; i++)
-                        {
-                            oneHotNames[i, (i + 3) % 3] = 1.0f;
-                        }
-
-                        var inputData = new float[3, 4];
-                        for (int i = 0; i < 3; i++)
-                        {
-                            inputData[i, 0] = priceData[i, 0];
-                            for (int j = 0; j < 3; j++)
-                            {
-                                inputData[i, j + 1] = oneHotNames[i, j];
-                            }
-                        }
-
-                        sess.run(tf.global_variables_initializer());
-
-                        System.Diagnostics.Debug.WriteLine("Model D - Data shapes:");
-                        System.Diagnostics.Debug.WriteLine($"Input data shape: {string.Join(",", inputData.GetLength(0))} x {string.Join(",", inputData.GetLength(1))}");
-                        System.Diagnostics.Debug.WriteLine($"Price data shape: {string.Join(",", priceData.GetLength(0))} x {string.Join(",", priceData.GetLength(1))}");
-
-                        System.Diagnostics.Debug.WriteLine($"Model D - Starting training with learning rate: {learningRate}");
-                        float previousLoss = float.MaxValue;
-                        int stableCount = 0;
-
-                        for (int epoch = 0; epoch < epochs; epoch++)
-                        {
-                            var feedDict = new Dictionary<Tensor, object>
+                    int biasALength = modelAReader.ReadInt32();
+                    var biasesA = new float[biasALength];
+                    for (int i = 0; i < biasALength; i++)
                     {
-                        { x, inputData },
-                        { y, priceData }
-                    };
+                        biasesA[i] = modelAReader.ReadSingle();
+                    }
 
-                            var feedItems = feedDict.Select(kv => new FeedItem(kv.Key, kv.Value)).ToArray();
+                    // Read Model B weights and biases
+                    int weightBLength = modelBReader.ReadInt32();
+                    var weightsB = new float[weightBLength];
+                    for (int i = 0; i < weightBLength; i++)
+                    {
+                        weightsB[i] = modelBReader.ReadSingle();
+                    }
 
-                            sess.run(trainOp, feedItems);
-                            var currentLoss = (float)sess.run(loss, feedItems);
+                    int biasBLength = modelBReader.ReadInt32();
+                    var biasesB = new float[biasBLength];
+                    for (int i = 0; i < biasBLength; i++)
+                    {
+                        biasesB[i] = modelBReader.ReadSingle();
+                    }
 
-                            if (float.IsNaN(currentLoss) || float.IsInfinity(currentLoss))
+                    System.Diagnostics.Debug.WriteLine($"Model A - Weights: {weightALength}, Biases: {biasALength}");
+                    System.Diagnostics.Debug.WriteLine($"Model B - Weights: {weightBLength}, Biases: {biasBLength}");
+
+                    await Task.Run(() =>
+                    {
+                        try
+                        {
+                            int epochs = 100;
+                            float learningRate = 0.0001f;
+
+                            tf.compat.v1.disable_eager_execution();
+                            var g = tf.Graph();
+                            using (var sess = tf.Session(g))
                             {
-                                System.Diagnostics.Debug.WriteLine($"Model D - Training diverged at epoch {epoch}. Stopping training.");
-                                break;
-                            }
+                                // Create combined input placeholder with dimensions for both models
+                                var combinedInputDim = weightALength + weightBLength;
+                                var x = tf.placeholder(tf.float32, shape: new[] { -1, combinedInputDim }, name: "combined_input");
+                                var y = tf.placeholder(tf.float32, shape: new[] { -1, 1 }, name: "output");
 
-                            if (Math.Abs(previousLoss - currentLoss) < 1e-6)
-                            {
-                                stableCount++;
-                                if (stableCount > 5)
+                                // Combine weights from both models
+                                var combinedWeights = new float[weightALength + weightBLength];
+                                Array.Copy(weightsA, 0, combinedWeights, 0, weightALength);
+                                Array.Copy(weightsB, 0, combinedWeights, weightALength, weightBLength);
+
+                                // Create combined weight variable
+                                var W = tf.Variable(
+                                    tf.constant(combinedWeights.Select(w => (float)w).ToArray(), shape: new[] { combinedInputDim, 1 }),
+                                    name: "combined_weights"
+                                );
+
+                                // Combine biases (taking average of both models)
+                                var combinedBias = (biasesA.Average() + biasesB.Average()) / 2;
+                                var b = tf.Variable(tf.constant(new[] { combinedBias }), name: "combined_bias");
+
+                                // Create combined model
+                                var predictions = tf.add(tf.matmul(x, W), b);
+                                var loss = tf.reduce_mean(tf.square(predictions - y)) * 0.5f;
+
+                                var optimizer = tf.train.GradientDescentOptimizer(learningRate);
+                                var trainOp = optimizer.minimize(loss);
+
+                                // Prepare combined input data
+                                var combinedInputData = new float[3, combinedInputDim];
+                                for (int i = 0; i < 3; i++)
                                 {
-                                    System.Diagnostics.Debug.WriteLine($"Model D - Training converged at epoch {epoch}");
-                                    break;
+                                    // Fill first part with Model A features
+                                    for (int j = 0; j < weightALength; j++)
+                                    {
+                                        combinedInputData[i, j] = weightsA[j];
+                                    }
+                                    // Fill second part with Model B features
+                                    for (int j = 0; j < weightBLength; j++)
+                                    {
+                                        combinedInputData[i, weightALength + j] = weightsB[j];
+                                    }
+                                }
+
+                                // Prepare target data
+                                var targetData = new float[3, 1];
+                                for (int i = 0; i < 3; i++)
+                                {
+                                    targetData[i, 0] = (biasesA[0] + biasesB[0]) / 2;
+                                }
+
+                                sess.run(tf.global_variables_initializer());
+
+                                System.Diagnostics.Debug.WriteLine("Combined Model - Data shapes:");
+                                System.Diagnostics.Debug.WriteLine($"Combined input shape: {combinedInputData.GetLength(0)} x {combinedInputData.GetLength(1)}");
+                                System.Diagnostics.Debug.WriteLine($"Target data shape: {targetData.GetLength(0)} x {targetData.GetLength(1)}");
+
+                                System.Diagnostics.Debug.WriteLine($"Combined Model - Starting training with learning rate: {learningRate}");
+                                float previousLoss = float.MaxValue;
+                                int stableCount = 0;
+
+                                for (int epoch = 0; epoch < epochs; epoch++)
+                                {
+                                    var feedDict = new Dictionary<Tensor, object>
+                            {
+                                { x, combinedInputData },
+                                { y, targetData }
+                            };
+
+                                    var feedItems = feedDict.Select(kv => new FeedItem(kv.Key, kv.Value)).ToArray();
+
+                                    sess.run(trainOp, feedItems);
+                                    var currentLoss = (float)sess.run(loss, feedItems);
+
+                                    if (float.IsNaN(currentLoss) || float.IsInfinity(currentLoss))
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"Combined Model - Training diverged at epoch {epoch}. Stopping training.");
+                                        break;
+                                    }
+
+                                    if (Math.Abs(previousLoss - currentLoss) < 1e-6)
+                                    {
+                                        stableCount++;
+                                        if (stableCount > 5)
+                                        {
+                                            System.Diagnostics.Debug.WriteLine($"Combined Model - Training converged at epoch {epoch}");
+                                            break;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        stableCount = 0;
+                                    }
+                                    previousLoss = currentLoss;
+
+                                    if (epoch % 10 == 0)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"Combined Model - Epoch {epoch}, Loss: {currentLoss:E4}");
+                                    }
+                                }
+
+                                // Save combined model
+                                System.Diagnostics.Debug.WriteLine("Starting combined model serialization");
+                                using (var memoryStream = new MemoryStream())
+                                using (var writer = new BinaryWriter(memoryStream))
+                                {
+                                    var finalW = (NDArray)sess.run(W);
+                                    var wData = finalW.ToArray<float>();
+                                    writer.Write(wData.Length);
+                                    foreach (var w in wData)
+                                    {
+                                        writer.Write(w);
+                                    }
+
+                                    var finalB = (NDArray)sess.run(b);
+                                    var bData = finalB.ToArray<float>();
+                                    writer.Write(bData.Length);
+                                    foreach (var bias in bData)
+                                    {
+                                        writer.Write(bias);
+                                    }
+
+                                    model.Data = memoryStream.ToArray();
+
+                                    // Convert model data to Base64 string for storage
+                                    var base64ModelData = Convert.ToBase64String(model.Data);
+
+                                    // Update OperationsStage1 record in database
+                                    try
+                                    {
+                                        // Find and update the OperationsStage1 record
+                                        var dbOperationsStage1 = _context.OperationsStage1s
+                                            .FirstOrDefault(o => o.CustomerId == (int)storedCustomerId);
+
+                                        if (dbOperationsStage1 != null)
+                                        {
+                                            dbOperationsStage1.Data = base64ModelData;
+                                            _context.OperationsStage1s.Update(dbOperationsStage1);
+                                            _context.SaveChanges();
+
+                                            System.Diagnostics.Debug.WriteLine($"Successfully updated OperationsStage1 Data field for CustomerId: {storedCustomerId}");
+                                        }
+                                        else
+                                        {
+                                            System.Diagnostics.Debug.WriteLine($"Error: OperationsStage1 record not found for CustomerId: {storedCustomerId}");
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"Error updating OperationsStage1: {ex.Message}");
+                                        throw;
+                                    }
+
+                                    Jit_Memory_Object.AddProperty("CombinedModel_Data", model.Data);
+                                    System.Diagnostics.Debug.WriteLine("Combined model serialized successfully");
+                                    System.Diagnostics.Debug.WriteLine($"Combined Model - Final loss: {previousLoss:E4}");
                                 }
                             }
-                            else
-                            {
-                                stableCount = 0;
-                            }
-                            previousLoss = currentLoss;
-
-                            if (epoch % 10 == 0)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"Model D - Epoch {epoch}, Loss: {currentLoss:E4}");
-                            }
                         }
-
-                        System.Diagnostics.Debug.WriteLine($"Model D - Training completed");
-                        System.Diagnostics.Debug.WriteLine($"Model D - Final loss: {previousLoss:E4}");
-
-                        // Save results to database
-                        System.Diagnostics.Debug.WriteLine($"Model D - Saving results to database");
-                        
-                    }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error in Combined Model training: {ex.Message}");
+                            throw;
+                        }
+                    });
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error in Model D training: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Error in model combination: {ex.Message}");
                     throw;
                 }
-            });
+            }
         }
+
+
+
 
 
 
