@@ -6,30 +6,155 @@ function CompanyProfile({ customerId }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [fadeIn, setFadeIn] = useState(false);
+    const [currentPage, setCurrentPage] = useState(0);
+
+    // Root level styles for perfect centering
+    const rootStyles = {
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '200%',
+        height: '200%',
+        maxWidth: '800px',
+        maxHeight: '600px',
+        zIndex: '9999',
+        pointerEvents: 'all',
+        margin: '0 auto',
+        padding: '0 20px'
+    };
+
+    // Main container styles
+    const containerStyles = {
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        background: 'rgba(0, 0, 0, 0.85)',
+        backdropFilter: 'blur(10px)',
+        zIndex: 10000,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        color: '#57b3c0',
+        borderRadius: '8px',
+        boxShadow: '0 0 30px rgba(87, 179, 192, 0.2)'
+    };
+
+    // Header styles
+    const headerStyles = {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '80px',
+        background: 'rgba(0, 0, 0, 0.9)',
+        padding: '20px 0',
+        zIndex: 10001,
+        borderBottom: '1px solid rgba(87, 179, 192, 0.3)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+    };
+
+    // Content area styles
+    const contentStyles = {
+        position: 'absolute',
+        top: '80px',
+        left: 0,
+        right: 0,
+        bottom: '80px',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        padding: '20px',
+        zIndex: 10000
+    };
+
+    // Table styles
+    const tableStyles = {
+        width: '100%',
+        borderCollapse: 'separate',
+        borderSpacing: '0 8px'
+    };
+
+    // Cell styles
+    const cellStyles = {
+        label: {
+            width: '180px',
+            padding: '16px 20px',
+            color: '#57b3c0',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            textAlign: 'left',
+            background: 'rgba(87, 179, 192, 0.1)',
+            borderRadius: '4px 0 0 4px'
+        },
+        value: {
+            padding: '16px 20px',
+            color: '#d87930',
+            fontSize: '16px',
+            background: 'rgba(216, 121, 48, 0.1)',
+            borderRadius: '0 4px 4px 0'
+        }
+    };
+
+    // Navigation styles with improved spacing
+    const navigationStyles = {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: '80px',
+        padding: '0 40px',
+        background: 'rgba(0, 0, 0, 0.95)',
+        backdropFilter: 'blur(10px)',
+        borderTop: '1px solid rgba(87, 179, 192, 0.3)',
+        display: 'flex',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        zIndex: 10002
+    };
+
+    // Button styles with improved accessibility
+    const buttonStyles = {
+        padding: '12px 24px',
+        minWidth: '120px',
+        background: 'rgba(87, 179, 192, 0.1)',
+        border: '1px solid #57b3c0',
+        color: '#57b3c0',
+        fontSize: '16px',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        transition: 'all 0.3s ease',
+        boxShadow: '0 0 15px rgba(87, 179, 192, 0.2)',
+        zIndex: 10003,
+        position: 'relative'
+    };
+
+    // Page counter styles
+    const pageCounterStyles = {
+        fontSize: '16px',
+        color: '#57b3c0',
+        padding: '0 40px',
+        minWidth: '120px',
+        textAlign: 'center'
+    };
 
     useEffect(() => {
         async function fetchProfileData() {
             if (!customerId) return;
-
             try {
                 setLoading(true);
                 setFadeIn(false);
                 const response = await fetch(`http://localhost:5000/api/ModelDbInits/GetCustomerByID/${customerId}`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'Content-Type': 'application/json' }
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
                 const data = await response.json();
                 setProfileData(data);
-                setTimeout(() => {
-                    setFadeIn(true);
-                }, 100);
+                setTimeout(() => setFadeIn(true), 100);
             } catch (err) {
                 setError(err.message);
             } finally {
@@ -42,89 +167,279 @@ function CompanyProfile({ customerId }) {
 
     if (loading) {
         return (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
-                <div className="text-center">
-                    <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                    <p className="text-cyan-500 text-lg">Loading profile...</p>
+            <div style={rootStyles}>
+                <div style={{ ...containerStyles, justifyContent: 'center', alignItems: 'center' }}>
+                    <div style={{
+                        width: '50px',
+                        height: '50px',
+                        borderRadius: '50%',
+                        border: '4px solid #57b3c0',
+                        borderTopColor: 'transparent',
+                        animation: 'spin 1s linear infinite'
+                    }} />
                 </div>
             </div>
         );
     }
 
     if (error) {
-        return <div className="absolute p-4 text-red-500">Error loading profile: {error}</div>;
+        return (
+            <div style={rootStyles}>
+                <div style={{ ...containerStyles, justifyContent: 'center', alignItems: 'center' }}>
+                    <div style={{ color: '#ff4444', fontSize: '18px' }}>
+                        System Error: {error}
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     if (!profileData) {
-        return <div className="absolute p-4 text-cyan-500">No profile data available.</div>;
-    }
-
-    const { clientInformation, modelDbInit, operationsStage1 } = profileData;
-
-    return (
-        <div className={`absolute inset-0 overflow-y-auto overflow-x-hidden bg-gray-50 transition-opacity duration-500 ease-in-out ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
-            <div className="relative w-full min-h-full p-4">
-                {/* Client Information Section */}
-                <div className={`relative w-full bg-white rounded-lg shadow p-6 mb-8 transition-transform duration-500 ease-in-out ${fadeIn ? 'translate-y-0' : 'translate-y-4'}`}>
-                    <h2 className="text-xl font-bold text-cyan-600 mb-4">Company Profile</h2>
-                    <div className="space-y-2">
-                        <p className="text-gray-600">Name: {clientInformation?.clientFirstName} {clientInformation?.clientLastName}</p>
-                        <p className="text-gray-600">Company: {clientInformation?.companyName}</p>
-                        <p className="text-gray-600">Phone: {clientInformation?.cleintPhone}</p>
-                        <p className="text-gray-600">Address: {clientInformation?.clientAddress}</p>
-                        <p className="text-gray-600">Customer ID: {clientInformation?.customerId}</p>
-                        <p className="text-gray-600">Client ID: {clientInformation?.id}</p>
+        return (
+            <div style={rootStyles}>
+                <div style={{ ...containerStyles, justifyContent: 'center', alignItems: 'center' }}>
+                    <div style={{ fontSize: '18px' }}>
+                        No profile data detected.
                     </div>
                 </div>
+            </div>
+        );
+    }
 
-                {/* Model Info Section */}
-                {modelDbInit && (
-                    <div className={`relative w-full bg-white rounded-lg shadow p-6 mb-8 transition-transform duration-500 delay-100 ease-in-out ${fadeIn ? 'translate-y-0' : 'translate-y-4'}`}>
-                        <h3 className="text-lg font-bold text-cyan-600 mb-4">Model Information</h3>
-                        <div className="space-y-2">
-                            <p className="text-gray-600">Model ID: {modelDbInit.modelId}</p>
-                            <p className="text-gray-600">Timestamp: {new Date(modelDbInit.modelDbInitTimeStamp).toLocaleString()}</p>
-                            <p className="text-gray-600">Data Size: {modelDbInit.dataSize} bytes</p>
-                            <p className="text-gray-600">Product Vector: {modelDbInit.modelDbInitProductVector}</p>
-                            <p className="text-gray-600">Service Vector: {modelDbInit.modelDbInitServiceVector || 'N/A'}</p>
-                        </div>
+    const { clientInformation, modelDbInit } = profileData;
+
+    const pages = [
+        {
+            title: "Company Information",
+            content: (
+                <table style={tableStyles}>
+                    <tbody>
+                        <tr>
+                            <td style={cellStyles.label}>Name:</td>
+                            <td style={cellStyles.value}>
+                                {clientInformation?.clientFirstName} {clientInformation?.clientLastName}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style={cellStyles.label}>Company:</td>
+                            <td style={cellStyles.value}>
+                                {clientInformation?.companyName}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style={cellStyles.label}>Phone:</td>
+                            <td style={cellStyles.value}>
+                                {clientInformation?.cleintPhone}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style={cellStyles.label}>Address:</td>
+                            <td style={cellStyles.value}>
+                                {clientInformation?.clientAddress}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            )
+        },
+        {
+            title: "Model Information",
+            content: modelDbInit && (
+                <table style={tableStyles}>
+                    <tbody>
+                        <tr>
+                            <td style={cellStyles.label}>Model ID:</td>
+                            <td style={cellStyles.value}>
+                                {modelDbInit.modelId}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style={cellStyles.label}>Timestamp:</td>
+                            <td style={cellStyles.value}>
+                                {new Date(modelDbInit.modelDbInitTimeStamp).toLocaleString()}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style={cellStyles.label}>Data Size:</td>
+                            <td style={cellStyles.value}>
+                                {modelDbInit.dataSize} bytes
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style={cellStyles.label}>Product Vector:</td>
+                            <td style={cellStyles.value}>
+                                {modelDbInit.modelDbInitProductVector}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style={cellStyles.label}>Service Vector:</td>
+                            <td style={cellStyles.value}>
+                                {modelDbInit.modelDbInitServiceVector || 'N/A'}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            )
+        },
+        {
+            title: "Operations Stage 1",
+            content: profileData?.operationsStage1 && (
+                <table style={tableStyles}>
+                    <tbody>
+                        <tr>
+                            <td style={cellStyles.label}>Operations ID:</td>
+                            <td style={cellStyles.value}>
+                                {profileData.operationsStage1.operationsId}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style={cellStyles.label}>Order ID:</td>
+                            <td style={cellStyles.value}>
+                                {profileData.operationsStage1.operationsOrderId}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style={cellStyles.label}>Customer ID:</td>
+                            <td style={cellStyles.value}>
+                                {profileData.operationsStage1.operationsCustomerId}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style={cellStyles.label}>Product Vector:</td>
+                            <td style={cellStyles.value}>
+                                {profileData.operationsStage1.operationsStageOneProductVector}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style={cellStyles.label}>Service Vector:</td>
+                            <td style={cellStyles.value}>
+                                {profileData.operationsStage1.operationsStageOneServiceVector || 'N/A'}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            )
+        },
+        {
+            title: "Products & Services",
+            content: profileData?.operationsStage1 && (
+                <div>
+                    <h2 style={{ color: '#57b3c0', marginBottom: '20px' }}>Products</h2>
+                    <table style={tableStyles}>
+                        <tbody>
+                            <tr>
+                                <td style={cellStyles.label}>Product A:</td>
+                                <td style={cellStyles.value}>
+                                    Name: {profileData.operationsStage1.productA.productName}<br />
+                                    Type: {profileData.operationsStage1.productA.productType}<br />
+                                    Value: {profileData.operationsStage1.subProductA}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style={cellStyles.label}>Product B:</td>
+                                <td style={cellStyles.value}>
+                                    Name: {profileData.operationsStage1.productB.productName}<br />
+                                    Type: {profileData.operationsStage1.productB.productType}<br />
+                                    Value: {profileData.operationsStage1.subProductB}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style={cellStyles.label}>Product C:</td>
+                                <td style={cellStyles.value}>
+                                    Name: {profileData.operationsStage1.productC.productName}<br />
+                                    Type: {profileData.operationsStage1.productC.productType}<br />
+                                    Value: {profileData.operationsStage1.subProductC}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h2 style={{ color: '#57b3c0', margin: '30px 0 20px' }}>Services</h2>
+                    <table style={tableStyles}>
+                        <tbody>
+                            <tr>
+                                <td style={cellStyles.label}>Service A:</td>
+                                <td style={cellStyles.value}>
+                                    Name: {profileData.operationsStage1.serviceA.serviceName}<br />
+                                    Type: {profileData.operationsStage1.serviceA.serviceType}<br />
+                                    Value: {profileData.operationsStage1.subServiceA}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style={cellStyles.label}>Service B:</td>
+                                <td style={cellStyles.value}>
+                                    Name: {profileData.operationsStage1.serviceB.serviceName}<br />
+                                    Type: {profileData.operationsStage1.serviceB.serviceType}<br />
+                                    Value: {profileData.operationsStage1.subServiceB}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style={cellStyles.label}>Service C:</td>
+                                <td style={cellStyles.value}>
+                                    Name: {profileData.operationsStage1.serviceC.serviceName}<br />
+                                    Type: {profileData.operationsStage1.serviceC.serviceType}<br />
+                                    Value: {profileData.operationsStage1.subServiceC}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            )
+        }
+    ];
+
+    return (
+        <div style={rootStyles}>
+            <div style={containerStyles}>
+                <div style={headerStyles}>
+                    <h1 style={{
+                        fontSize: '32px',
+                        fontWeight: 'bold',
+                        textAlign: 'center',
+                        color: '#57b3c0',
+                        margin: 0
+                    }}>
+                        {pages[currentPage].title}
+                    </h1>
+                </div>
+
+                <div style={{
+                    ...contentStyles,
+                    opacity: fadeIn ? 1 : 0,
+                    transition: 'opacity 500ms'
+                }}>
+                    {pages[currentPage].content}
+                </div>
+
+                <div style={navigationStyles}>
+                    <button
+                        onClick={() => setCurrentPage(p => p - 1)}
+                        disabled={currentPage === 0}
+                        style={{
+                            ...buttonStyles,
+                            opacity: currentPage === 0 ? 0.5 : 1,
+                            cursor: currentPage === 0 ? 'not-allowed' : 'pointer'
+                        }}
+                    >
+                        Previous
+                    </button>
+
+                    <div style={pageCounterStyles}>
+                        Page {currentPage + 1} of {pages.length}
                     </div>
-                )}
 
-                {/* Operations Section */}
-                {operationsStage1 && (
-                    <div className={`relative w-full bg-white rounded-lg shadow p-6 mb-8 transition-transform duration-500 delay-200 ease-in-out ${fadeIn ? 'translate-y-0' : 'translate-y-4'}`}>
-                        <h3 className="text-lg font-bold text-cyan-600 mb-4">Operations Information</h3>
-
-                        {/* Products Section */}
-                        <div className="mb-6">
-                            <h4 className="text-md font-semibold text-cyan-500 mb-4">Products</h4>
-                            <div className="space-y-4">
-                                {['A', 'B', 'C'].map((letter, index) => (
-                                    <div key={letter} className={`border p-4 rounded transition-transform duration-500 delay-${300 + index * 100} ease-in-out ${fadeIn ? 'translate-y-0' : 'translate-y-4'}`}>
-                                        <p className="font-medium">Product {letter}</p>
-                                        <p className="text-sm text-gray-600">Name: {operationsStage1[`product${letter}`]?.productName}</p>
-                                        <p className="text-sm text-gray-600">Type: {operationsStage1[`product${letter}`]?.productType}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Services Section */}
-                        <div>
-                            <h4 className="text-md font-semibold text-cyan-500 mb-4">Services</h4>
-                            <div className="space-y-4">
-                                {['A', 'B', 'C'].map((letter, index) => (
-                                    <div key={letter} className={`border p-4 rounded transition-transform duration-500 delay-${600 + index * 100} ease-in-out ${fadeIn ? 'translate-y-0' : 'translate-y-4'}`}>
-                                        <p className="font-medium">Service {letter}</p>
-                                        <p className="text-sm text-gray-600">Name: {operationsStage1[`service${letter}`]?.serviceName}</p>
-                                        <p className="text-sm text-gray-600">Type: {operationsStage1[`service${letter}`]?.serviceType}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )}
+                    <button
+                        onClick={() => setCurrentPage(p => p + 1)}
+                        disabled={currentPage === pages.length - 1}
+                        style={{
+                            ...buttonStyles,
+                            opacity: currentPage === pages.length - 1 ? 0.5 : 1,
+                            cursor: currentPage === pages.length - 1 ? 'not-allowed' : 'pointer'
+                        }}
+                    >
+                        Next
+                    </button>
+                </div>
             </div>
         </div>
     );
