@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
+import { useNavigate } from 'react-router-dom';
 
 function CompanyProfile({ customerId }) {
     const [profileData, setProfileData] = useState(null);
@@ -7,6 +8,7 @@ function CompanyProfile({ customerId }) {
     const [error, setError] = useState(null);
     const [fadeIn, setFadeIn] = useState(false);
     const [currentPage, setCurrentPage] = useState(0);
+    const navigate = useNavigate();
 
     // Root level styles for perfect centering
     const rootStyles = {
@@ -130,6 +132,38 @@ function CompanyProfile({ customerId }) {
         position: 'relative'
     };
 
+    // Add button styles
+    const addButtonStyles = {
+        width: '100%',
+        padding: '15px',
+        background: 'rgba(87, 179, 192, 0.1)',
+        border: '1px solid #57b3c0',
+        color: '#57b3c0',
+        fontSize: '16px',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        marginTop: '20px',
+        transition: 'all 0.3s ease',
+        animation: 'glow 1.5s infinite alternate',
+        boxShadow: '0 0 10px rgba(87, 179, 192, 0.5)'
+    };
+
+    // Add keyframes for the glow animation
+    const glowKeyframes = `
+        @keyframes glow {
+            from {
+                box-shadow: 0 0 5px rgba(87, 179, 192, 0.5),
+                           0 0 10px rgba(87, 179, 192, 0.5),
+                           0 0 15px rgba(87, 179, 192, 0.5);
+            }
+            to {
+                box-shadow: 0 0 10px rgba(87, 179, 192, 0.7),
+                           0 0 20px rgba(87, 179, 192, 0.7),
+                           0 0 30px rgba(87, 179, 192, 0.7);
+            }
+        }
+    `;
+
     // Page counter styles
     const pageCounterStyles = {
         fontSize: '16px',
@@ -164,6 +198,11 @@ function CompanyProfile({ customerId }) {
 
         fetchProfileData();
     }, [customerId]);
+
+    // Handler for navigating to AddCompany page
+    const handleAddCompany = () => {
+        navigate('/add-company');
+    };
 
     if (loading) {
         return (
@@ -389,59 +428,68 @@ function CompanyProfile({ customerId }) {
     ];
 
     return (
-        <div style={rootStyles}>
-            <div style={containerStyles}>
-                <div style={headerStyles}>
-                    <h1 style={{
-                        fontSize: '32px',
-                        fontWeight: 'bold',
-                        textAlign: 'center',
-                        color: '#57b3c0',
-                        margin: 0
-                    }}>
-                        {pages[currentPage].title}
-                    </h1>
-                </div>
-
-                <div style={{
-                    ...contentStyles,
-                    opacity: fadeIn ? 1 : 0,
-                    transition: 'opacity 500ms'
-                }}>
-                    {pages[currentPage].content}
-                </div>
-
-                <div style={navigationStyles}>
-                    <button
-                        onClick={() => setCurrentPage(p => p - 1)}
-                        disabled={currentPage === 0}
-                        style={{
-                            ...buttonStyles,
-                            opacity: currentPage === 0 ? 0.5 : 1,
-                            cursor: currentPage === 0 ? 'not-allowed' : 'pointer'
-                        }}
-                    >
-                        Previous
-                    </button>
-
-                    <div style={pageCounterStyles}>
-                        Page {currentPage + 1} of {pages.length}
+        <>
+            <style>{glowKeyframes}</style>
+            <div style={rootStyles}>
+                <div style={containerStyles}>
+                    <div style={headerStyles}>
+                        <h1 style={{
+                            fontSize: '32px',
+                            fontWeight: 'bold',
+                            textAlign: 'center',
+                            color: '#57b3c0',
+                            margin: 0
+                        }}>
+                            {pages[currentPage].title}
+                        </h1>
                     </div>
 
-                    <button
-                        onClick={() => setCurrentPage(p => p + 1)}
-                        disabled={currentPage === pages.length - 1}
-                        style={{
-                            ...buttonStyles,
-                            opacity: currentPage === pages.length - 1 ? 0.5 : 1,
-                            cursor: currentPage === pages.length - 1 ? 'not-allowed' : 'pointer'
-                        }}
-                    >
-                        Next
-                    </button>
+                    <div style={{
+                        ...contentStyles,
+                        opacity: fadeIn ? 1 : 0,
+                        transition: 'opacity 500ms'
+                    }}>
+                        {pages[currentPage].content}
+                    </div>
+
+                    <div style={navigationStyles}>
+                        <button
+                            onClick={() => setCurrentPage(p => p - 1)}
+                            disabled={currentPage === 0}
+                            style={{
+                                ...buttonStyles,
+                                opacity: currentPage === 0 ? 0.5 : 1,
+                                cursor: currentPage === 0 ? 'not-allowed' : 'pointer'
+                            }}
+                        >
+                            Previous
+                        </button>
+
+                        <div style={pageCounterStyles}>
+                            Page {currentPage + 1} of {pages.length}
+                        </div>
+
+                        <button
+                            onClick={() => setCurrentPage(p => p + 1)}
+                            disabled={currentPage === pages.length - 1}
+                            style={{
+                                ...buttonStyles,
+                                opacity: currentPage === pages.length - 1 ? 0.5 : 1,
+                                cursor: currentPage === pages.length - 1 ? 'not-allowed' : 'pointer'
+                            }}
+                        >
+                            Next
+                        </button>
+                    </div>
                 </div>
+                <button
+                    style={addButtonStyles}
+                    onClick={handleAddCompany}
+                >
+                    Add New
+                </button>
             </div>
-        </div>
+        </>
     );
 }
 

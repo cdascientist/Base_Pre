@@ -81,6 +81,8 @@ namespace Base_Pre.Server
             builder.Services.AddHttpClient();
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
+           
+          
 
             // Configure Swagger
             builder.Services.AddSwaggerGen(c =>
