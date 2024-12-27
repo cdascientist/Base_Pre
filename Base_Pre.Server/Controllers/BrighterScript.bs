@@ -1,0 +1,257 @@
+' MyObject.bs
+class MyObject
+    ' Purpose:
+    ' Stores shared data for processing across multiple stages.
+
+    MyString as string
+    MyInteger as integer
+
+    ' Constructor initializes fields
+    function new()
+        m.MyString = "This is a string"
+        m.MyInteger = 1
+    end function
+end class
+
+' MyObjectPost.bs
+class MyObjectPost
+    ' Purpose:
+    ' This object stores data processed in StageThree and StageFour for API POST requests.
+
+    MyIntegerStageOne as string
+    MyIntegerStageTwo as string
+    TitleStageOne as string
+    TitleStageTwo as string
+
+    ' Constructor initializes the object with default values
+    function new()
+        m.MyIntegerStageOne = ""
+        m.MyIntegerStageTwo = ""
+        m.TitleStageOne = ""
+        m.TitleStageTwo = ""
+    end function
+end class
+
+' StageOne.bs
+class StageOne
+    ' Purpose:
+    ' 1. Represents the first stage in the workflow.
+    ' 2. Modifies the shared MyObject by adding 1 to MyInteger.
+    ' 3. Fetches data from an external API and updates MyString with item.title.
+
+    MyObject as MyObject
+
+    ' Step 1: Constructor accepts the shared MyObject and stores it.
+    function new(obj as MyObject)
+        m.MyObject = obj
+        print "StageOne instance created"
+    end function
+
+    ' Step 2: Adds 1 to MyInteger in the shared MyObject.
+    ' Step 3: Makes an HTTP GET request to fetch data from an API and updates MyString.
+    function start() as void
+        print "StageOne is starting..."
+
+        ' Modify the shared object
+        m.MyObject.MyInteger += 1
+
+        ' Import the HTTP module
+        import "http"
+
+        ' Define the API endpoint
+        url = "https://jsonplaceholder.typicode.com/posts"
+
+        ' Make the HTTP GET request
+        response = http.Get(url)
+
+        ' Check if the request was successful
+        if response.StatusCode = 200 then
+            ' Parse the response body as JSON
+            data = ParseJson(response.Body)
+            
+            ' Update MyString with the title of the first item
+            if data.count() > 0 then
+                m.MyObject.MyString = data[0].title
+                print "StageOne updated MyString: " + m.MyObject.MyString
+            else
+                print "No data received from API."
+            end if
+        else
+            ' Print an error message
+            print "Error: " + response.StatusCode.toStr()
+        end if
+
+        print "StageOne completed!"
+    end function
+
+    ' Step 4: Returns the modified MyObject instance.
+    function getMyObject() as MyObject
+        return m.MyObject
+    end function
+end class
+
+' StageTwo.bs
+class StageTwo
+    ' Purpose:
+    ' 1. Represents the second stage in the workflow.
+    ' 2. Modifies the shared MyObject by adding 2 to MyInteger.
+    ' 3. Fetches data from an external API and updates MyString with item.title.
+
+    MyObject as MyObject
+
+    ' Step 1: Constructor accepts the shared MyObject and stores it.
+    function new(obj as MyObject)
+        m.MyObject = obj
+        print "StageTwo instance created"
+    end function
+
+    ' Step 2: Adds 2 to MyInteger in the shared MyObject.
+    ' Step 3: Makes an HTTP GET request to fetch data from an API and updates MyString.
+    function start() as void
+        print "StageTwo is starting..."
+
+        ' Modify the shared object
+        m.MyObject.MyInteger += 2
+
+        ' Import the HTTP module
+        import "http"
+
+        ' Define the API endpoint
+        url = "https://jsonplaceholder.typicode.com/posts"
+
+        ' Make the HTTP GET request
+        response = http.Get(url)
+
+        ' Check if the request was successful
+        if response.StatusCode = 200 then
+            ' Parse the response body as JSON
+            data = ParseJson(response.Body)
+            
+            ' Update MyString with the title of the first item
+            if data.count() > 0 then
+                m.MyObject.MyString = data[0].title
+                print "StageTwo updated MyString: " + m.MyObject.MyString
+            else
+                print "No data received from API."
+            end if
+        else
+            ' Print an error message
+            print "Error: " + response.StatusCode.toStr()
+        end if
+
+        print "StageTwo completed!"
+    end function
+
+    ' Step 4: Returns the modified MyObject instance.
+    function getMyObject() as MyObject
+        return m.MyObject
+    end function
+end class
+
+' StageThree.bs
+function StageThree(myObjectPost as MyObjectPost, stageOneInteger as Integer, titleStageOne as String) as void
+    ' Purpose:
+    ' 1. Converts stageOneInteger to string and sets it to MyIntegerStageOne.
+    ' 2. Sets TitleStageOne to the title from StageOne.
+    ' 3. Converts MyObjectPost to JSON and sends a POST request to http://www.myapi.com/1.
+
+    print "StageThree is starting..."
+
+    ' Set MyObjectPost fields
+    myObjectPost.MyIntegerStageOne = stageOneInteger.toStr()
+    myObjectPost.TitleStageOne = titleStageOne
+
+    ' Convert MyObjectPost to JSON
+    postData = Json.Stringify(myObjectPost)
+
+    ' Import HTTP module
+    import "http"
+
+    ' Define the API endpoint
+    url = "http://www.myapi.com/1"
+
+    ' Make the HTTP POST request
+    response = http.Post(url, { "Content-Type": "application/json" }, postData)
+
+    ' Check response status
+    if response.StatusCode = 200 or response.StatusCode = 201 then
+        print "StageThree: Successfully posted data to API."
+    else
+        print "StageThree: Error posting data - " + response.StatusCode.toStr()
+    end if
+
+    print "StageThree completed!"
+end function
+
+' StageFour.bs
+function StageFour(myObjectPost as MyObjectPost, stageTwoInteger as Integer, titleStageTwo as String) as void
+    ' Purpose:
+    ' 1. Converts stageTwoInteger to string and sets it to MyIntegerStageTwo.
+    ' 2. Sets TitleStageTwo to the title from StageTwo.
+    ' 3. Converts MyObjectPost to JSON and sends a POST request to http://www.myapi.com/2.
+
+    print "StageFour is starting..."
+
+    ' Set MyObjectPost fields
+    myObjectPost.MyIntegerStageTwo = stageTwoInteger.toStr()
+    myObjectPost.TitleStageTwo = titleStageTwo
+
+    ' Convert MyObjectPost to JSON
+    postData = Json.Stringify(myObjectPost)
+
+    ' Import HTTP module
+    import "http"
+
+    ' Define the API endpoint
+    url = "http://www.myapi.com/2"
+
+    ' Make the HTTP POST request
+    response = http.Post(url, { "Content-Type": "application/json" }, postData)
+
+    ' Check response status
+    if response.StatusCode = 200 or response.StatusCode = 201 then
+        print "StageFour: Successfully posted data to API."
+    else
+        print "StageFour: Error posting data - " + response.StatusCode.toStr()
+    end if
+
+    print "StageFour completed!"
+end function
+
+' Main.bs
+sub main()
+    ' Step 1: Create the shared MyObject
+    myObject = new MyObject()
+
+    ' Step 2: Initialize StageOne and StageTwo with MyObject
+    stageOne = new StageOne(myObject)
+    stageTwo = new StageTwo(myObject)
+
+    ' Step 3: Run StageOne and StageTwo in parallel
+    tasks = [
+        CreateTask(sub() stageOne.start()),
+        CreateTask(sub() stageTwo.start())
+    ]
+    Wait(tasks)
+
+    ' Step 4: Retrieve updated MyObject from both stages
+    stageOneObject = stageOne.getMyObject()
+    stageTwoObject = stageTwo.getMyObject()
+
+    ' Step 5: Extract titles from StageOne and StageTwo
+    titleStageOne = stageOneObject.MyString
+    titleStageTwo = stageTwoObject.MyString
+
+    ' Step 6: Create MyObjectPost
+    myObjectPost = new MyObjectPost()
+
+    ' Step 7: Run StageThree and StageFour in parallel
+    tasks = [
+        CreateTask(sub() StageThree(myObjectPost, stageOneObject.MyInteger, titleStageOne)),
+        CreateTask(sub() StageFour(myObjectPost, stageTwoObject.MyInteger, titleStageTwo))
+    ]
+    Wait(tasks)
+
+    ' Step 8: Workflow completed
+    print "Workflow completed!"
+end sub
