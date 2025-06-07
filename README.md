@@ -5,6 +5,9 @@
   <img src="https://img.youtube.com/vi/GekYmPnvNAs/maxresdefault.jpg" alt="Watch the video" style="width: 100%; display: block;">
   <img src="https://img.icons8.com/ios-filled/100/ffffff/play--v1.png" alt="Play Button" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.8; pointer-events: none;">
 </a>
+
+
+
 This document outlines some advanced machine learning techniques employed within the Base_Pre framework, focusing on dimensional embeddings and autonomous agent-based model synthesis.
 
 Hey, I put my proof-of-concept calculations in a simple and easy to read C# so anyone can try. 
