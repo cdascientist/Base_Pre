@@ -1,7 +1,9 @@
 # Advanced ML Techniques using Advanced Dimensional Embeddings using Spatial Coordinates and 3D Fractal Diffusion with Dimensional Coupling & Model Synthesis
 
-<a href="https://youtu.be/GekYmPnvNAs" target="_blank">
-  <img src="https://img.youtube.com/vi/GekYmPnvNAs/maxresdefault.jpg" alt="Watch the video" width="800">
+
+<a href="https://youtu.be/GekYmPnvNAs" target="_blank" style="display: inline-block; position: relative; width: 800px;">
+  <img src="https://img.youtube.com/vi/GekYmPnvNAs/maxresdefault.jpg" alt="Watch the video" style="width: 100%;">
+  <img src="https://img.icons8.com/ios-filled/100/ffffff/play--v1.png" alt="Play Button" style="position: absolute; top: 50%; left: 50%; width: 100px; height: 100px; transform: translate(-50%, -50%); opacity: 0.8;">
 </a>
 This document outlines some advanced machine learning techniques employed within the Base_Pre framework, focusing on dimensional embeddings and autonomous agent-based model synthesis.
 
